@@ -81,6 +81,10 @@ class OCRDesktopApp:
         
         self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # --- 版權聲明 ---
+        lbl_copyright = ttk.Label(self.root, text="Copyright © @youzih", foreground="gray")
+        lbl_copyright.pack(side=tk.BOTTOM, pady=(0, 10))
 
     def browse_source(self):
         d = filedialog.askdirectory(initialdir=self.source_var.get())
