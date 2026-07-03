@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import sv_ttk
 
 from src.ocr import OCREngine
 from src.utils import clean_filename, get_unique_path, move_or_copy_file
@@ -31,6 +32,14 @@ class OCRDesktopApp:
         self.root.after(100, self.process_log_queue)
 
     def create_widgets(self):
+        # --- 全局樣式設定 (適中字體) ---
+        style = ttk.Style()
+        style.configure(".", font=("微軟正黑體", 11))
+        style.configure("TLabelframe.Label", font=("微軟正黑體", 11, "bold"))
+        style.configure("TButton", font=("微軟正黑體", 12, "bold"))
+        style.configure("TEntry", font=("微軟正黑體", 11))
+        style.configure("TRadiobutton", font=("微軟正黑體", 11))
+        
         # --- 設定區塊 ---
         frame_config = ttk.LabelFrame(self.root, text="資料夾設定", padding=10)
         frame_config.pack(fill=tk.X, padx=10, pady=10)
@@ -66,7 +75,7 @@ class OCRDesktopApp:
         frame_log = ttk.LabelFrame(self.root, text="處理紀錄", padding=10)
         frame_log.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         
-        self.log_text = tk.Text(frame_log, wrap=tk.WORD, state=tk.DISABLED, bg="#1e1e1e", fg="#00ff00", font=("Consolas", 10))
+        self.log_text = tk.Text(frame_log, wrap=tk.WORD, state=tk.DISABLED, bg="#1e1e1e", fg="#00ff00", font=("Consolas", 11))
         scrollbar = ttk.Scrollbar(frame_log, command=self.log_text.yview)
         self.log_text.configure(yscrollcommand=scrollbar.set)
         
@@ -207,12 +216,10 @@ class OCRDesktopApp:
 
 def launch_gui():
     root = tk.Tk()
-    # 嘗試設定高解析度支援 (Windows)
-    try:
-        from ctypes import windll
-        windll.shcore.SetProcessDpiAwareness(1)
-    except:
-        pass
+    
+    # 套用 Windows 11 現代化深色主題
+    sv_ttk.set_theme("dark")
+    
     app = OCRDesktopApp(root)
     root.mainloop()
 
