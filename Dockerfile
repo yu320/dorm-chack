@@ -16,9 +16,9 @@ WORKDIR /app
 # 複製專案原始碼
 COPY . /app/
 
-# 為了讓 Docker image 容量維持在合理範圍，我們預設安裝 CPU 版本的引擎
-# 透過 uv 安裝到系統環境 (Docker 內部不需 venv)
-RUN uv pip install --system torch torchvision easyocr
+# 為了讓 Docker image 容量維持在合理範圍 (從 3GB 縮減到 300MB)，我們強制指定安裝 CPU 版本的 PyTorch 引擎
+RUN uv pip install --system torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN uv pip install --system easyocr opencv-python-headless sv-ttk
 
 # 建立預設掛載資料夾
 RUN mkdir -p source_images processed_images
