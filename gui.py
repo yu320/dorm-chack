@@ -72,7 +72,9 @@ class OCRDesktopApp:
         self.btn_start.pack(fill=tk.X, ipady=10)
         
         # --- 版權聲明 ---
-        lbl_copyright = ttk.Label(self.root, text="Copyright © 2026 Youzih", foreground="gray")
+        current_year = datetime.datetime.now().year
+        year_str = "2026" if current_year == 2026 else f"2026-{current_year}"
+        lbl_copyright = ttk.Label(self.root, text=f"Copyright © {year_str} Youzih", foreground="gray")
         lbl_copyright.pack(side=tk.BOTTOM, pady=(0, 10))
         
         # --- 紀錄區塊 ---
