@@ -71,6 +71,10 @@ class OCRDesktopApp:
         self.btn_start = ttk.Button(frame_action, text="🚀 開始執行辨識與改名", command=self.start_processing)
         self.btn_start.pack(fill=tk.X, ipady=10)
         
+        # --- 版權聲明 ---
+        lbl_copyright = ttk.Label(self.root, text="Copyright © @youzih", foreground="gray")
+        lbl_copyright.pack(side=tk.BOTTOM, pady=(0, 10))
+        
         # --- 紀錄區塊 ---
         frame_log = ttk.LabelFrame(self.root, text="處理紀錄", padding=10)
         frame_log.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -81,10 +85,6 @@ class OCRDesktopApp:
         
         self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # --- 版權聲明 ---
-        lbl_copyright = ttk.Label(self.root, text="Copyright © @youzih", foreground="gray")
-        lbl_copyright.pack(side=tk.BOTTOM, pady=(0, 10))
 
     def browse_source(self):
         d = filedialog.askdirectory(initialdir=self.source_var.get())
