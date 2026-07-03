@@ -1,0 +1,6 @@
+Dockerfile export-ignore
+docker-compose.yml export-ignore
+.github/ export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
+.python-version export-ignore
