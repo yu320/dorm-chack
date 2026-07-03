@@ -1,0 +1,29 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # 當你 push 類似 v1.0.0 的標籤時觸發
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Release Zip
+        run: |
+          # 將所有需要發布的檔案打包成 zip
+          zip -r dorm-chack-release.zip src main.py gui.py Run_CPU.bat Run_GPU.bat 啟動介面.vbs pyproject.toml uv.lock settings.json README.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dorm-chack-release.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
