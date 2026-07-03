@@ -59,6 +59,15 @@ Copyright © @youzih
 如果您想在 NAS 或 Linux 伺服器上全自動執行，可以使用我們發布在 `ghcr.io` 的 Docker 映像檔。
 *(注意：Docker 模式為純背景指令列，不包含視窗圖形介面)*
 
+### 方法一：使用 Docker Compose (推薦)
+1. 將專案中的 `docker-compose.yml` 下載到您的伺服器。
+2. 在同一個資料夾下，執行：
+```bash
+docker-compose up
+```
+*(程式會自動讀取您本地的 `source_images`，處理後將結果輸出到 `processed_images`，執行完畢後容器會自動結束。)*
+
+### 方法二：使用原生 Docker 指令
 ```bash
 docker run -v /您的本地來源資料夾:/app/source_images \
            -v /您的本地輸出資料夾:/app/processed_images \

@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  ocr-worker:
+    image: ghcr.io/yu320/dorm-chack:latest
+    container_name: dorm-chack-ocr
+    volumes:
+      # 將本機的 ./source_images 對應到容器內的 /app/source_images
+      - ./source_images:/app/source_images
+      # 將本機的 ./processed_images 對應到容器內的 /app/processed_images
+      - ./processed_images:/app/processed_images
+    
+    # 本程式為「單次批次處理腳本」，執行完畢後容器會自動結束。
+    # 建議搭配 NAS 內建的排程工具 (Cron) 或使用 `docker-compose up` 手動批次執行。
+    restart: "no"
