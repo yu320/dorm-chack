@@ -52,3 +52,15 @@ Copyright © @youzih
 - **UI 框架**：Python 原生 `tkinter` 搭配開源 `sv-ttk` (Sun Valley Theme) 主題渲染。
 - **AI 核心**：PyTorch + EasyOCR。
 - **相依套件**：定義於 `.bat` 的啟動腳本與虛擬環境中，達成開箱即用的隔離環境體驗。
+
+---
+
+## 🐳 Docker 部署 (無介面批次模式)
+如果您想在 NAS 或 Linux 伺服器上全自動執行，可以使用我們發布在 `ghcr.io` 的 Docker 映像檔。
+*(注意：Docker 模式為純背景指令列，不包含視窗圖形介面)*
+
+```bash
+docker run -v /您的本地來源資料夾:/app/source_images \
+           -v /您的本地輸出資料夾:/app/processed_images \
+           ghcr.io/yu320/dorm-chack:latest
+```
