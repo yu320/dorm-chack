@@ -72,7 +72,7 @@ class OCRDesktopApp:
         self.btn_start.pack(fill=tk.X, ipady=10)
         
         # --- 版權聲明 ---
-        lbl_copyright = ttk.Label(self.root, text="Copyright © @youzih", foreground="gray")
+        lbl_copyright = ttk.Label(self.root, text="Copyright © 2026 Youzih", foreground="gray")
         lbl_copyright.pack(side=tk.BOTTOM, pady=(0, 10))
         
         # --- 紀錄區塊 ---
