@@ -1,12 +1,11 @@
 FROM python:3.11-slim
 
-# 安裝 OpenCV 與 EasyOCR 系統相依套件
+# 安裝 OpenCV 與 EasyOCR 系統相依套件 (Debian 12 Bookworm 適用)
 RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
+    libgl1 \
     libsm6 \
     libxext6 \
-    libxrender-dev \
-    libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
 
 # 安裝超快速的 Python 套件管理工具 uv
