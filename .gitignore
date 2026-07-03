@@ -14,3 +14,9 @@ venv/
 # Project Specific
 source_images/
 processed_images/
+
+# UV binaries
+uv.exe
+uvw.exe
+uvx.exe
+uv.zip

@@ -1,0 +1,10 @@
+{
+    "source_dir": "./source_images",
+    "target_dir": "./processed_images",
+    "move_files": false,
+    "supported_extensions": [
+        ".jpg",
+        ".jpeg",
+        ".png"
+    ]
+}

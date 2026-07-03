@@ -6,86 +6,128 @@
 # ]
 # ///
 
+import hashlib
+import json
+import threading
+import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.config import SOURCE_DIR, TARGET_DIR, MOVE_FILES, SUPPORTED_EXTENSIONS
 from src.utils import clean_filename, get_unique_path, move_or_copy_file
 from src.ocr import OCREngine
 
+HASH_FILE = TARGET_DIR / ".hash_history.json"
+
+def load_hashes():
+    if HASH_FILE.exists():
+        with open(HASH_FILE, "r", encoding="utf-8") as f:
+            return set(json.load(f))
+    return set()
+
+def save_hashes(hashes):
+    with open(HASH_FILE, "w", encoding="utf-8") as f:
+        json.dump(list(hashes), f)
+
+def get_file_md5(file_path):
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+def process_single_image(img_path, ocr_engine, log_file_path, recognized_dir, unrecognized_dir, log_lock, processed_hashes_lock, processed_hashes):
+    # 計算檔案 MD5 (防呆：避免重複處理)
+    file_md5 = get_file_md5(img_path)
+    with processed_hashes_lock:
+        if file_md5 in processed_hashes:
+            return f"[跳過] {img_path.name} 已處理過 (MD5重複)"
+
+    try:
+        recognized_text = ocr_engine.extract_text(str(img_path))
+        new_stem = clean_filename(recognized_text)
+
+        if not new_stem:
+            new_stem = f"未辨識_{img_path.stem}"
+            current_target_dir = unrecognized_dir
+            status_msg = "狀態: 未辨識到任何有效文字"
+        else:
+            current_target_dir = recognized_dir
+            status_msg = f"辨識結果: 「{new_stem}」"
+
+            # 寫入文字檔紀錄 (加鎖確保執行緒安全)
+            now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            with log_lock:
+                with open(log_file_path, "a", encoding="utf-8") as f:
+                    f.write(f"[{now_str}] 原檔名: {img_path.name}\n")
+                    f.write(f"辨識文字: {recognized_text}\n")
+                    f.write("-" * 40 + "\n")
+
+        ext = img_path.suffix.lower()
+        
+        # 處理檔名衝突與複製移動 (加鎖避免檔名競爭)
+        with log_lock:
+            dest_path = get_unique_path(current_target_dir, new_stem, ext)
+            move_or_copy_file(img_path, dest_path, MOVE_FILES)
+
+        action_name = "移動" if MOVE_FILES else "複製"
+        
+        # 加入歷史紀錄
+        with processed_hashes_lock:
+            processed_hashes.add(file_md5)
+            
+        return f"[成功] {img_path.name} -> {status_msg} (已{action_name}至 {dest_path.name})"
+        
+    except Exception as e:
+        return f"[錯誤] {img_path.name} 發生異常: {e}"
+
 def process_images():
-    # 自動建立主要資料夾
     SOURCE_DIR.mkdir(parents=True, exist_ok=True)
     TARGET_DIR.mkdir(parents=True, exist_ok=True)
     
-    # 建立分類子資料夾
     recognized_dir = TARGET_DIR / "已辨識"
     unrecognized_dir = TARGET_DIR / "未辨識"
     recognized_dir.mkdir(parents=True, exist_ok=True)
     unrecognized_dir.mkdir(parents=True, exist_ok=True)
 
-    # 準備紀錄檔 (依據每次執行時間產生新檔案，注意 Windows 檔名不允許使用冒號 :)
-    import datetime
     run_time_str = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
     log_file_path = TARGET_DIR / f"{run_time_str}-辨識紀錄.txt"
 
-    # 檢查來源資料夾是否有檔案
-    image_paths = [
-        p
-        for p in SOURCE_DIR.iterdir()
-        if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS
-    ]
+    image_paths = [p for p in SOURCE_DIR.iterdir() if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS]
 
     if not image_paths:
         print(f"提示：來源資料夾【{SOURCE_DIR.resolve()}】中沒有找到支援的圖片檔 ({', '.join(SUPPORTED_EXTENSIONS)})。")
         print("請放入圖片後再次執行此腳本！")
         return
 
-    # 初始化 OCR 引擎
     ocr_engine = OCREngine()
-    print("開始處理圖片...\n")
+    processed_hashes = load_hashes()
+    
+    log_lock = threading.Lock()
+    processed_hashes_lock = threading.Lock()
 
-    for index, img_path in enumerate(image_paths, start=1):
-        print(f"[{index}/{len(image_paths)}] 正在處理: {img_path.name}")
+    print(f"開始多執行緒平行處理 {len(image_paths)} 張圖片...\n")
 
-        try:
-            # 進行 OCR 辨識
-            recognized_text = ocr_engine.extract_text(str(img_path))
+    # 使用多執行緒平行處理 (預設 4 個執行緒)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = {
+            executor.submit(
+                process_single_image, 
+                img_path, ocr_engine, log_file_path, recognized_dir, unrecognized_dir, 
+                log_lock, processed_hashes_lock, processed_hashes
+            ): img_path for img_path in image_paths
+        }
+        
+        for future in as_completed(futures):
+            print(future.result())
 
-            # 清理文字以作為合法檔名
-            new_stem = clean_filename(recognized_text)
-
-            # 依據辨識結果進行分類
-            if not new_stem:
-                # 未辨識
-                new_stem = f"未辨識_{img_path.stem}"
-                current_target_dir = unrecognized_dir
-                print("  -> 狀態: 未辨識到任何文字")
-            else:
-                # 已辨識
-                current_target_dir = recognized_dir
-                print(f"  -> 辨識結果: 「{new_stem}」")
-
-                # 寫入文字檔紀錄
-                import datetime
-                now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                with open(log_file_path, "a", encoding="utf-8") as f:
-                    f.write(f"[{now_str}] 原檔名: {img_path.name}\n")
-                    f.write(f"辨識文字: {recognized_text}\n")
-                    f.write("-" * 40 + "\n")
-
-            # 處理檔名衝突：若該分類資料夾已有同名檔案，自動加上數字後綴
-            ext = img_path.suffix.lower()
-            dest_path = get_unique_path(current_target_dir, new_stem, ext)
-
-            # 移動或複製檔案
-            move_or_copy_file(img_path, dest_path, MOVE_FILES)
-
-            action_name = "移動" if MOVE_FILES else "複製"
-            print(f"  -> 已{action_name}至: {dest_path.relative_to(TARGET_DIR)}\n")
-
-        except Exception as e:
-            print(f"  -> [錯誤] 處理圖片時發生異常: {e}\n")
-
-    print("所有圖片處理完畢！")
-
+    # 儲存雜湊歷史紀錄
+    save_hashes(processed_hashes)
+    print("\n所有圖片批次處理完畢！")
 
 if __name__ == "__main__":
-    process_images()
+    import sys
+    # 若執行 `uv run main.py --gui` 則啟動 GUI，否則預設跑 CLI 批次
+    if "--gui" in sys.argv:
+        import gui
+        gui.launch_gui()
+    else:
+        process_images()
