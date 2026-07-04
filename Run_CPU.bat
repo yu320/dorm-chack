@@ -8,11 +8,11 @@ echo.
 if not exist ".bin\uv.exe" (
     echo [System] Downloading required tools uv...
     mkdir .bin >nul 2>&1
-    powershell -Command "$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri 'https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip' -OutFile 'uv.zip'"
-    powershell -Command "Expand-Archive -Path 'uv.zip' -DestinationPath '.' -Force"
+    powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri 'https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip' -OutFile 'uv_installer.zip'"
+    powershell -Command "Expand-Archive -Path 'uv_installer.zip' -DestinationPath '.' -Force"
     move "uv-x86_64-pc-windows-msvc\uv.exe" ".bin\" >nul
     rmdir /S /Q "uv-x86_64-pc-windows-msvc" >nul
-    del "uv.zip" >nul
+    del "uv_installer.zip" >nul
     echo [System] Download complete!
     echo.
 )
