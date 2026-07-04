@@ -127,7 +127,7 @@ if __name__ == "__main__":
     import sys
     # 若執行 `uv run main.py --gui` 則啟動 GUI，否則預設跑 CLI 批次
     if "--gui" in sys.argv:
-        import gui
+        from src import gui
         gui.launch_gui()
     else:
         process_images()
