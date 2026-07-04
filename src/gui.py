@@ -58,6 +58,9 @@ class OCRDesktopApp(ctk.CTk):
         # 預設顯示首頁
         self.select_frame_by_name("home")
         
+        # 啟動時預先讀取資料夾內檔案數
+        self.update_preview_stats()
+        
         # 啟動佇列監聽
         self.after(100, self.process_queue)
         
@@ -377,14 +380,22 @@ class OCRDesktopApp(ctk.CTk):
             self.target_var.set(os.path.join(path, "processed_images"))
             self.lbl_current_path.configure(text=f"已選取: {path}", text_color="#2ECC71")
             self.update_log(f"[系統] 拖曳設定了來源: {path}")
+            self.update_preview_stats()
+            self.save_current_settings()
 
     def browse_source(self):
         d = filedialog.askdirectory(initialdir=self.source_var.get())
-        if d: self.source_var.set(d)
+        if d: 
+            self.source_var.set(d)
+            self.lbl_current_path.configure(text=f"當前來源: {d}", text_color="#3498DB")
+            self.update_preview_stats()
+            self.save_current_settings()
 
     def browse_target(self):
         d = filedialog.askdirectory(initialdir=self.target_var.get())
-        if d: self.target_var.set(d)
+        if d: 
+            self.target_var.set(d)
+            self.save_current_settings()
 
     def open_output_folder(self):
         path = self.target_var.get()
@@ -399,6 +410,31 @@ class OCRDesktopApp(ctk.CTk):
         self.log_text.insert("end", msg + "\n")
         self.log_text.see("end")
         self.log_text.configure(state="disabled")
+
+    def update_preview_stats(self):
+        try:
+            source_dir = Path(self.source_var.get())
+            if not source_dir.exists() or not source_dir.is_dir():
+                self.val_total.configure(text="0")
+                self.lbl_status.configure(text="尚未選擇有效的來源資料夾", text_color="gray")
+                return
+
+            exts = [k for k, v in self.ext_vars.items() if v.get()] if hasattr(self, 'ext_vars') else self.app_settings.get("supported_extensions", [".jpg"])
+            if not exts: exts = [".jpg"]
+            
+            image_paths = [p for p in source_dir.iterdir() if p.is_file() and p.suffix.lower() in exts]
+            total_images = len(image_paths)
+            
+            self.val_total.configure(text=str(total_images))
+            self.val_success.configure(text="0")
+            self.val_failed.configure(text="0")
+            
+            if total_images > 0:
+                self.lbl_status.configure(text=f"✅ 準備就緒！共掃描到 {total_images} 個檔案，等待開始", text_color="#2ECC71")
+            else:
+                self.lbl_status.configure(text="⚠️ 警告：此資料夾內沒有找到支援的圖片格式！", text_color="#E74C3C")
+        except Exception as e:
+            pass
 
     def clear_log_screen(self):
         self.log_text.configure(state="normal")
