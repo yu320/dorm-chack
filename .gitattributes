@@ -4,3 +4,4 @@ docker-compose.yml export-ignore
 .gitignore export-ignore
 .gitattributes export-ignore
 .python-version export-ignore
+*.bat text eol=crlf
