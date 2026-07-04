@@ -4,6 +4,7 @@ import threading
 import queue
 import os
 import windnd
+import time
 from pathlib import Path
 
 from src.config import load_settings, save_settings
@@ -450,20 +451,31 @@ class OCRDesktopApp(ctk.CTk):
                     self.btn_start.configure(state="normal", text="🚀 開始執行批次改名")
                     self.btn_cancel.configure(state="disabled", text="⛔ 停止")
                     self.lbl_status.configure(text="✅ 所有任務已處理完畢！", text_color="#2ECC71")
+                    self.progress_bar.configure(progress_color="#2ECC71")
+                    self.progress_bar.set(1.0)
                 elif msg:
                     self.update_log(msg)
                     if "初始化" in msg or "成功載入" in msg:
                         self.lbl_status.configure(text="⏳ " + msg, text_color="#F1C40F")
+                        self.progress_bar.configure(progress_color="#F1C40F")
                     elif "處理已終止" in msg:
                         self.lbl_status.configure(text="⛔ 處理已強制終止", text_color="#E74C3C")
+                        self.progress_bar.configure(progress_color="#E74C3C")
                 
                 if stats:
                     success, failed, total = stats
+                    processed = success + failed
                     if total > 0: 
-                        progress_val = (success + failed) / total
+                        progress_val = processed / total
                         self.progress_bar.set(progress_val)
-                        if progress_val < 1.0:
-                            self.lbl_status.configure(text=f"🔄 正在處理圖片... ({success+failed}/{total})", text_color="#3498DB")
+                        if progress_val < 1.0 and processed > 0:
+                            elapsed = time.time() - self.start_time
+                            speed = processed / elapsed if elapsed > 0 else 0
+                            remain = total - processed
+                            eta = remain / speed if speed > 0 else 0
+                            eta_str = f"{int(eta)} 秒" if eta < 60 else f"{int(eta//60)} 分 {int(eta%60)} 秒"
+                            self.lbl_status.configure(text=f"🔄 處理中... ({processed}/{total}) | ⚡ {speed:.1f} 張/秒 | ⏳ 剩餘約 {eta_str}", text_color="#3498DB")
+                            self.progress_bar.configure(progress_color="#3498DB")
                     self.val_total.configure(text=str(total))
                     self.val_success.configure(text=str(success))
                     self.val_failed.configure(text=str(failed))
@@ -476,16 +488,19 @@ class OCRDesktopApp(ctk.CTk):
             self.processor.cancel()
             self.btn_cancel.configure(state="disabled", text="正在停止...")
             self.lbl_status.configure(text="⚠️ 正在強制中斷，請稍候...", text_color="#E74C3C")
+            self.progress_bar.configure(progress_color="#E74C3C")
             self.update_log("⚠️ 觸發停止，等待當前任務結束...")
 
     def start_processing(self):
         if self.is_processing: return
         self.is_processing = True
         
+        self.start_time = time.time()
         self.save_current_settings()
         self.btn_start.configure(state="disabled", text="處理中，請稍候...")
         self.btn_cancel.configure(state="normal", text="⛔ 停止")
         self.lbl_status.configure(text="⏳ 準備啟動 AI 引擎...", text_color="#F1C40F")
+        self.progress_bar.configure(progress_color="#3498DB")
         self.progress_bar.set(0)
         self.update_log("--------------------------------")
         
