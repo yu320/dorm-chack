@@ -85,6 +85,8 @@ class OCRDesktopApp(ctk.CTk):
         self.app_settings["move_files"] = self.mode_var.get()
         self.app_settings["blacklist"] = self.entry_blacklist.get("1.0", "end").strip()
         self.app_settings["theme"] = self.theme_var.get()
+        if hasattr(self, 'auto_open_var'):
+            self.app_settings["auto_open_folder"] = self.auto_open_var.get()
         
         selected_langs = [k for k, v in self.lang_vars.items() if v.get()]
         self.app_settings["languages"] = selected_langs if selected_langs else ["en"]
@@ -289,13 +291,18 @@ class OCRDesktopApp(ctk.CTk):
         sys_box = ctk.CTkFrame(self.settings_frame, corner_radius=15)
         sys_box.grid(row=3, column=0, padx=30, pady=(0, 30), sticky="ew")
         sys_box.grid_columnconfigure(1, weight=1)
+        
         lbl_theme = ctk.CTkLabel(sys_box, text="介面主題:", font=self.font_main)
-        lbl_theme.grid(row=0, column=0, padx=20, pady=(20, 20), sticky="w")
+        lbl_theme.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
         self.theme_var = ctk.StringVar(value=self.app_settings.get("theme", "Dark"))
         theme_menu = ctk.CTkOptionMenu(sys_box, values=["Dark", "Light", "System"], variable=self.theme_var, font=self.font_main, command=self.change_theme)
-        theme_menu.grid(row=0, column=1, padx=0, pady=(20, 20), sticky="w")
+        theme_menu.grid(row=0, column=1, padx=0, pady=(20, 10), sticky="w")
         btn_clear_cache = ctk.CTkButton(sys_box, text="🗑️ 清除快取", font=self.font_main, fg_color="#E74C3C", hover_color="#C0392B", command=self.clear_cache)
-        btn_clear_cache.grid(row=0, column=2, padx=20, pady=(20, 20), sticky="e")
+        btn_clear_cache.grid(row=0, column=2, padx=20, pady=(20, 10), sticky="e")
+        
+        self.auto_open_var = ctk.BooleanVar(value=self.app_settings.get("auto_open_folder", True))
+        chk_auto_open = ctk.CTkCheckBox(sys_box, text="處理完成後自動開啟輸出資料夾", variable=self.auto_open_var, font=self.font_main, command=self.save_current_settings)
+        chk_auto_open.grid(row=1, column=0, columnspan=3, padx=20, pady=(10, 20), sticky="w")
 
     def create_guide_frame(self):
         self.guide_frame = ctk.CTkScrollableFrame(self, corner_radius=0, fg_color="transparent")
@@ -461,6 +468,11 @@ class OCRDesktopApp(ctk.CTk):
                     self.lbl_status.configure(text="✅ 所有任務已處理完畢！", text_color="#2ECC71")
                     self.progress_bar.configure(progress_color="#2ECC71")
                     self.progress_bar.set(1.0)
+                    
+                    if hasattr(self, 'auto_open_var') and self.auto_open_var.get():
+                        self.open_output_folder()
+                    messagebox.showinfo("完成通知", "🎉 所有圖片已批次改名完畢！", parent=self)
+                    
                 elif msg:
                     self.update_log(msg)
                     if "初始化" in msg or "成功載入" in msg:

@@ -56,8 +56,12 @@ class BatchProcessor:
             hash_file = target_dir / ".hash_history.json"
             processed_hashes = set()
             if hash_file.exists():
-                with open(hash_file, "r", encoding="utf-8") as f:
-                    processed_hashes = set(json.load(f))
+                try:
+                    with open(hash_file, "r", encoding="utf-8") as f:
+                        processed_hashes = set(json.load(f))
+                except Exception:
+                    self.callback("⚠️ [系統] 發現歷史快取損毀，已自動為您重置", None)
+                    processed_hashes = set()
                     
             log_lock = threading.Lock()
             hash_lock = threading.Lock()
