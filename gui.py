@@ -12,23 +12,25 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.ocr import OCREngine
 from src.utils import clean_filename, get_unique_path, move_or_copy_file
-from src.config import load_settings, save_settings, SUPPORTED_EXTENSIONS
+from src.config import load_settings, save_settings
 
-APP_VERSION = "v1.4.0"
-
-ctk.set_appearance_mode("Dark")
-ctk.set_default_color_theme("blue")
+APP_VERSION = "v1.5.0"
 
 class OCRDesktopApp(ctk.CTk):
     def __init__(self):
         super().__init__()
 
         self.title("圖片文字辨識與自動改名工具")
-        self.geometry("950x750")
-        self.minsize(900, 700)
+        self.geometry("1000x800")
+        self.minsize(950, 750)
         
         # 載入設定檔
         self.app_settings = load_settings()
+        
+        # 設定主題
+        theme = self.app_settings.get("theme", "Dark")
+        ctk.set_appearance_mode(theme)
+        ctk.set_default_color_theme("blue")
         
         # 狀態與資源
         self.ocr_engine = None
@@ -36,9 +38,6 @@ class OCRDesktopApp(ctk.CTk):
         self.is_cancelled = False
         self.log_queue = queue.Queue()
         self.progress_queue = queue.Queue()
-        
-        # 數據統計
-        self.stats = {"total": 0, "success": 0, "failed": 0}
         
         # 設定字型
         self.font_main = ("Microsoft JhengHei UI", 14)
@@ -73,6 +72,7 @@ class OCRDesktopApp(ctk.CTk):
         self.app_settings["target_dir"] = self.target_var.get()
         self.app_settings["move_files"] = self.mode_var.get()
         self.app_settings["blacklist"] = self.entry_blacklist.get("1.0", "end").strip()
+        self.app_settings["theme"] = self.theme_var.get()
         
         # 收集打勾的語言
         selected_langs = []
@@ -82,6 +82,15 @@ class OCRDesktopApp(ctk.CTk):
         if not selected_langs:
             selected_langs = ["en"] # 至少要有英文
         self.app_settings["languages"] = selected_langs
+        
+        # 收集打勾的副檔名
+        selected_exts = []
+        for ext, var in self.ext_vars.items():
+            if var.get():
+                selected_exts.append(ext)
+        if not selected_exts:
+            selected_exts = [".jpg"]
+        self.app_settings["supported_extensions"] = selected_exts
         
         save_settings(self.app_settings)
 
@@ -93,11 +102,9 @@ class OCRDesktopApp(ctk.CTk):
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
         self.sidebar_frame.grid_rowconfigure(5, weight=1)
         
-        # 標題
         self.logo_label = ctk.CTkLabel(self.sidebar_frame, text="✨ Auto Renamer", font=self.font_title)
         self.logo_label.grid(row=0, column=0, padx=20, pady=(30, 30))
         
-        # 導覽按鈕
         self.btn_nav_home = ctk.CTkButton(self.sidebar_frame, corner_radius=0, height=50, border_spacing=10, text="🏠 控制中心",
                                           fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray70", "gray30"),
                                           anchor="w", font=self.font_main, command=lambda: self.select_frame_by_name("home"))
@@ -118,7 +125,6 @@ class OCRDesktopApp(ctk.CTk):
                                               anchor="w", font=self.font_main, command=lambda: self.select_frame_by_name("guide"))
         self.btn_nav_guide.grid(row=4, column=0, sticky="ew")
         
-        # 版本與版權
         self.version_label = ctk.CTkLabel(self.sidebar_frame, text=f"版本 {APP_VERSION}", font=("Microsoft JhengHei UI", 12), text_color="gray")
         self.version_label.grid(row=6, column=0, padx=20, pady=(10, 5))
         
@@ -153,7 +159,7 @@ class OCRDesktopApp(ctk.CTk):
         self.card_failed.grid(row=0, column=2, padx=10, sticky="ew")
 
         # --- 中央拖曳區 ---
-        self.drop_zone = ctk.CTkFrame(self.home_frame, corner_radius=20, fg_color="#1E1E1E", border_width=2, border_color="#333333")
+        self.drop_zone = ctk.CTkFrame(self.home_frame, corner_radius=20, border_width=2, border_color="#333333")
         self.drop_zone.grid(row=1, column=0, padx=30, pady=20, sticky="nsew")
         self.drop_zone.grid_rowconfigure(0, weight=1)
         self.drop_zone.grid_columnconfigure(0, weight=1)
@@ -203,14 +209,13 @@ class OCRDesktopApp(ctk.CTk):
         lbl_title = ctk.CTkLabel(self.settings_frame, text="⚙️ 進階設定", font=self.font_title)
         lbl_title.grid(row=0, column=0, padx=30, pady=(30, 20), sticky="w")
         
-        # --- 路徑設定區塊 ---
-        config_box = ctk.CTkFrame(self.settings_frame, corner_radius=15, fg_color="#2B2B2B")
+        # --- 基本設定區塊 ---
+        config_box = ctk.CTkFrame(self.settings_frame, corner_radius=15)
         config_box.grid(row=1, column=0, padx=30, pady=(0, 20), sticky="ew")
         config_box.grid_columnconfigure(1, weight=1)
         
         lbl_source = ctk.CTkLabel(config_box, text="手動指定來源:", font=self.font_main)
         lbl_source.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
-        
         self.source_var = ctk.StringVar(value=self.app_settings.get("source_dir", ""))
         entry_source = ctk.CTkEntry(config_box, textvariable=self.source_var, font=self.font_main, height=35)
         entry_source.grid(row=0, column=1, padx=(0, 10), pady=(20, 10), sticky="ew")
@@ -219,7 +224,6 @@ class OCRDesktopApp(ctk.CTk):
 
         lbl_target = ctk.CTkLabel(config_box, text="指定輸出路徑:", font=self.font_main)
         lbl_target.grid(row=1, column=0, padx=20, pady=10, sticky="w")
-        
         self.target_var = ctk.StringVar(value=self.app_settings.get("target_dir", ""))
         entry_target = ctk.CTkEntry(config_box, textvariable=self.target_var, font=self.font_main, height=35)
         entry_target.grid(row=1, column=1, padx=(0, 10), pady=10, sticky="ew")
@@ -228,34 +232,45 @@ class OCRDesktopApp(ctk.CTk):
 
         lbl_mode = ctk.CTkLabel(config_box, text="檔案處理模式:", font=self.font_main)
         lbl_mode.grid(row=2, column=0, padx=20, pady=(10, 20), sticky="w")
-        
         self.mode_var = ctk.BooleanVar(value=self.app_settings.get("move_files", False))
         radio_frame = ctk.CTkFrame(config_box, fg_color="transparent")
         radio_frame.grid(row=2, column=1, columnspan=2, padx=(0, 20), pady=(10, 20), sticky="w")
-        
         radio_copy = ctk.CTkRadioButton(radio_frame, text="複製 (保留原始檔案，安全)", variable=self.mode_var, value=False, font=self.font_main, command=self.save_current_settings)
         radio_copy.pack(side="left", padx=(0, 20))
         radio_move = ctk.CTkRadioButton(radio_frame, text="移動 (處理後刪除原檔，省空間)", variable=self.mode_var, value=True, font=self.font_main, command=self.save_current_settings)
         radio_move.pack(side="left")
 
-        # --- 語言與過濾設定區塊 ---
-        adv_box = ctk.CTkFrame(self.settings_frame, corner_radius=15, fg_color="#2B2B2B")
+        # --- 辨識格式與語言設定區塊 ---
+        adv_box = ctk.CTkFrame(self.settings_frame, corner_radius=15)
         adv_box.grid(row=2, column=0, padx=30, pady=(0, 30), sticky="ew")
         adv_box.grid_columnconfigure(1, weight=1)
         
+        # 副檔名選擇
+        lbl_ext = ctk.CTkLabel(adv_box, text="辨識檔案格式:", font=self.font_main)
+        lbl_ext.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="nw")
+        
+        ext_frame = ctk.CTkFrame(adv_box, fg_color="transparent")
+        ext_frame.grid(row=0, column=1, padx=(0, 20), pady=(20, 10), sticky="w")
+        
+        self.available_exts = [".jpg", ".jpeg", ".png", ".bmp", ".webp", ".pdf"]
+        self.ext_vars = {}
+        saved_exts = self.app_settings.get("supported_extensions", self.available_exts)
+        
+        for i, ext in enumerate(self.available_exts):
+            var = ctk.BooleanVar(value=(ext in saved_exts))
+            self.ext_vars[ext] = var
+            chk = ctk.CTkCheckBox(ext_frame, text=ext.upper(), variable=var, font=self.font_main, command=self.save_current_settings)
+            chk.grid(row=i//3, column=i%3, padx=10, pady=5, sticky="w")
+
         # 語言設定
         lbl_lang = ctk.CTkLabel(adv_box, text="AI 辨識語言:", font=self.font_main)
-        lbl_lang.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="nw")
+        lbl_lang.grid(row=1, column=0, padx=20, pady=(10, 10), sticky="nw")
         
         lang_frame = ctk.CTkFrame(adv_box, fg_color="transparent")
-        lang_frame.grid(row=0, column=1, padx=(0, 20), pady=(20, 10), sticky="w")
+        lang_frame.grid(row=1, column=1, padx=(0, 20), pady=(10, 10), sticky="w")
         
         self.available_langs = {
-            "ch_tra": "繁體中文",
-            "ch_sim": "簡體中文",
-            "en": "英文",
-            "ja": "日文",
-            "ko": "韓文"
+            "ch_tra": "繁體中文", "ch_sim": "簡體中文", "en": "英文", "ja": "日文", "ko": "韓文"
         }
         self.lang_vars = {}
         saved_langs = self.app_settings.get("languages", ["ch_tra", "en"])
@@ -265,21 +280,49 @@ class OCRDesktopApp(ctk.CTk):
             self.lang_vars[code] = var
             chk = ctk.CTkCheckBox(lang_frame, text=name, variable=var, font=self.font_main, command=self.save_current_settings)
             chk.grid(row=i//3, column=i%3, padx=10, pady=5, sticky="w")
-            
-        lbl_lang_hint = ctk.CTkLabel(adv_box, text="* 變更語言後，下次啟動任務時會重新載入模型", font=("Microsoft JhengHei UI", 12), text_color="gray")
-        lbl_lang_hint.grid(row=1, column=1, padx=(0, 20), pady=(0, 10), sticky="w")
 
         # 雜訊過濾黑名單
         lbl_black = ctk.CTkLabel(adv_box, text="過濾關鍵字:", font=self.font_main)
-        lbl_black.grid(row=2, column=0, padx=20, pady=(10, 20), sticky="nw")
+        lbl_black.grid(row=2, column=0, padx=20, pady=(10, 10), sticky="nw")
         
         self.entry_blacklist = ctk.CTkTextbox(adv_box, font=self.font_main, height=80)
         self.entry_blacklist.grid(row=2, column=1, padx=(0, 20), pady=(10, 5), sticky="ew")
         self.entry_blacklist.insert("1.0", self.app_settings.get("blacklist", ""))
         self.entry_blacklist.bind("<KeyRelease>", lambda e: self.save_current_settings())
         
-        lbl_black_hint = ctk.CTkLabel(adv_box, text="輸入您想過濾的關鍵字（例如固定的公司名），每行一個，這些字詞將不會出現在檔名中", font=("Microsoft JhengHei UI", 12), text_color="gray")
+        lbl_black_hint = ctk.CTkLabel(adv_box, text="每行一個想過濾的字（如公司名），這些字將不會出現在改名後的檔名中", font=("Microsoft JhengHei UI", 12), text_color="gray")
         lbl_black_hint.grid(row=3, column=1, padx=(0, 20), pady=(0, 20), sticky="w")
+        
+        # --- 介面外觀與系統操作 ---
+        sys_box = ctk.CTkFrame(self.settings_frame, corner_radius=15)
+        sys_box.grid(row=3, column=0, padx=30, pady=(0, 30), sticky="ew")
+        sys_box.grid_columnconfigure(1, weight=1)
+        
+        lbl_theme = ctk.CTkLabel(sys_box, text="介面主題:", font=self.font_main)
+        lbl_theme.grid(row=0, column=0, padx=20, pady=(20, 20), sticky="w")
+        
+        self.theme_var = ctk.StringVar(value=self.app_settings.get("theme", "Dark"))
+        theme_menu = ctk.CTkOptionMenu(sys_box, values=["Dark", "Light", "System"], variable=self.theme_var, font=self.font_main, command=self.change_theme)
+        theme_menu.grid(row=0, column=1, padx=0, pady=(20, 20), sticky="w")
+        
+        btn_clear_cache = ctk.CTkButton(sys_box, text="🗑️ 清除處理記憶快取", font=self.font_main, fg_color="#E74C3C", hover_color="#C0392B", command=self.clear_cache)
+        btn_clear_cache.grid(row=0, column=2, padx=20, pady=(20, 20), sticky="e")
+
+    def change_theme(self, new_theme):
+        ctk.set_appearance_mode(new_theme)
+        self.save_current_settings()
+
+    def clear_cache(self):
+        target_dir = Path(self.target_var.get())
+        hash_file = target_dir / ".hash_history.json"
+        if hash_file.exists():
+            try:
+                hash_file.unlink()
+                messagebox.showinfo("成功", "已成功清除處理記憶！下次執行將會重新辨識所有圖片。")
+            except Exception as e:
+                messagebox.showerror("錯誤", f"清除失敗: {e}")
+        else:
+            messagebox.showinfo("提示", "目前沒有任何記憶快取檔案。")
 
     def create_guide_frame(self):
         self.guide_frame = ctk.CTkScrollableFrame(self, corner_radius=0, fg_color="transparent")
@@ -288,8 +331,7 @@ class OCRDesktopApp(ctk.CTk):
         lbl_title = ctk.CTkLabel(self.guide_frame, text="📖 使用說明", font=self.font_title)
         lbl_title.grid(row=0, column=0, padx=30, pady=(30, 20), sticky="w")
         
-        # 內容卡片
-        guide_box = ctk.CTkFrame(self.guide_frame, corner_radius=15, fg_color="#2B2B2B")
+        guide_box = ctk.CTkFrame(self.guide_frame, corner_radius=15)
         guide_box.grid(row=1, column=0, padx=30, pady=(0, 30), sticky="ew")
         guide_box.grid_columnconfigure(0, weight=1)
         
@@ -302,8 +344,9 @@ class OCRDesktopApp(ctk.CTk):
 🎨 步驟二：設定您的選項 (非必填)
 • 在『⚙️ 進階設定』中，您可以：
   - 切換「複製（安全保留原檔）」或「移動（處理後刪除原檔）」。
+  - 勾選要處理的檔案格式（支援 .jpg, .png, .pdf 等）。
   - 勾選圖片中可能出現的語言（繁體中文、日文等）。
-  - 設定過濾關鍵字，避免特定的浮水印文字成為檔名的一部分。
+  - 設定過濾關鍵字，避免特定的文字（如網址）成為檔名的一部分。
 
 ✨ 步驟三：一鍵開始自動改名！
 • 回到『🏠 控制中心』，點擊最下方大大的「🚀 開始執行批次改名」按鈕。
@@ -312,13 +355,10 @@ class OCRDesktopApp(ctk.CTk):
 
 ❓ 常見問題 (Q&A)
 Q: 處理到一半不小心按到停止或關閉程式怎麼辦？
-A: 軟體內建「自動記憶機制 (Hash Cache)」。您只要重新開啟軟體並按開始，它會自動跳過已經處理過的圖片，無縫從中斷處繼續執行！
+A: 軟體內建「自動記憶機制」。您只要重新開啟軟體並按開始，它會自動跳過已經處理過的圖片，無縫從中斷處繼續執行！如果您想重新處理，可以到「進階設定」點擊「清除處理記憶快取」。
 
 Q: 為什麼有些圖片被丟到「未辨識」資料夾？
 A: 如果圖片沒有文字、文字太模糊，或是辨識出的文字全是您設定的「過濾關鍵字」，軟體會將它們歸類為未辨識。
-
-Q: 支援哪些檔案格式？
-A: 支援常見的 .jpg, .jpeg, .png, .bmp, .webp 以及掃描檔 .pdf。
 """
         
         lbl_content = ctk.CTkLabel(guide_box, text=guide_text, font=("Microsoft JhengHei UI", 15), justify="left", wraplength=600)
@@ -449,29 +489,28 @@ A: 支援常見的 .jpg, .jpeg, .png, .bmp, .webp 以及掃描檔 .pdf。
         target_dir = Path(self.target_var.get())
         move_files = self.mode_var.get()
         
-        # 讀取語言清單
         langs = self.app_settings.get("languages", ["ch_tra", "en"])
-        # 讀取黑名單
+        allowed_exts = self.app_settings.get("supported_extensions", [".jpg", ".jpeg", ".png", ".bmp", ".webp", ".pdf"])
+        
         blacklist_raw = self.app_settings.get("blacklist", "")
         blacklist = [w.strip() for w in blacklist_raw.split('\n') if w.strip()]
         
-        threading.Thread(target=self.run_batch_job, args=(source_dir, target_dir, move_files, langs, blacklist), daemon=True).start()
+        threading.Thread(target=self.run_batch_job, args=(source_dir, target_dir, move_files, langs, allowed_exts, blacklist), daemon=True).start()
 
-    def run_batch_job(self, source_dir, target_dir, move_files, langs, blacklist):
+    def run_batch_job(self, source_dir, target_dir, move_files, langs, allowed_exts, blacklist):
         try:
             if not source_dir.exists():
                 self.log(f"[錯誤] 來源資料夾不存在: {source_dir}")
                 return
             
-            image_paths = [p for p in source_dir.iterdir() if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS]
+            image_paths = [p for p in source_dir.iterdir() if p.is_file() and p.suffix.lower() in allowed_exts]
             total_images = len(image_paths)
             
             if total_images == 0:
-                self.log(f"[提示] 找不到支援的圖片或文件檔 ({', '.join(SUPPORTED_EXTENSIONS)})")
+                self.log(f"[提示] 找不到指定的檔案格式 ({', '.join(allowed_exts)})")
                 return
 
             self.log("正在初始化 AI OCR 引擎 (首次啟動可能需要幾秒鐘)...")
-            # 如果尚未初始化，或語言改變了，重新初始化
             if not self.ocr_engine or getattr(self.ocr_engine, 'current_langs', []) != langs:
                 self.ocr_engine = OCREngine(languages=langs)
                 self.ocr_engine.current_langs = langs
