@@ -1,5 +1,5 @@
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+import customtkinter as ctk
+from tkinter import filedialog, messagebox
 import threading
 import queue
 import datetime
@@ -7,86 +7,112 @@ import hashlib
 import json
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import sv_ttk
 
 from src.ocr import OCREngine
 from src.utils import clean_filename, get_unique_path, move_or_copy_file
 from src.config import SUPPORTED_EXTENSIONS
 
-class OCRDesktopApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("圖片文字辨識與自動改名工具 (專業版)")
-        self.root.geometry("700x550")
-        self.root.minsize(600, 500)
+# 設定主題與顏色
+ctk.set_appearance_mode("Dark")  # Modes: "System" (standard), "Dark", "Light"
+ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
+
+class OCRDesktopApp(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+
+        self.title("圖片文字辨識與自動改名工具")
+        self.geometry("800x650")
+        self.minsize(700, 600)
         
         # 狀態與資源
         self.ocr_engine = None
         self.is_processing = False
         self.log_queue = queue.Queue()
         
-        # 介面建構
+        # 設定字型
+        self.font_main = ("Microsoft JhengHei UI", 14)
+        self.font_title = ("Microsoft JhengHei UI", 24, "bold")
+        self.font_log = ("Consolas", 12)
+
         self.create_widgets()
         
         # 啟動佇列監聽
-        self.root.after(100, self.process_log_queue)
+        self.after(100, self.process_log_queue)
 
     def create_widgets(self):
-        # --- 全局樣式設定 (適中字體) ---
-        style = ttk.Style()
-        style.configure(".", font=("微軟正黑體", 11))
-        style.configure("TLabelframe.Label", font=("微軟正黑體", 11, "bold"))
-        style.configure("TButton", font=("微軟正黑體", 12, "bold"))
-        style.configure("TEntry", font=("微軟正黑體", 11))
-        style.configure("TRadiobutton", font=("微軟正黑體", 11))
+        # 佈局設定
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(2, weight=1) # 讓日誌區塊自動延展
+
+        # --- 標題區塊 ---
+        self.title_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.title_frame.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
         
+        self.title_label = ctk.CTkLabel(self.title_frame, text="✨ 圖片自動辨識改名工具", font=self.font_title)
+        self.title_label.pack(side="left")
+
         # --- 設定區塊 ---
-        frame_config = ttk.LabelFrame(self.root, text="資料夾設定", padding=10)
-        frame_config.pack(fill=tk.X, padx=10, pady=10)
-        
+        self.config_frame = ctk.CTkFrame(self, corner_radius=10)
+        self.config_frame.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
+        self.config_frame.grid_columnconfigure(1, weight=1)
+
         # 來源資料夾
-        ttk.Label(frame_config, text="來源資料夾:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        self.source_var = tk.StringVar(value=str(Path("source_images").resolve()))
-        ttk.Entry(frame_config, textvariable=self.source_var, width=50).grid(row=0, column=1, padx=5, pady=5)
-        ttk.Button(frame_config, text="瀏覽...", command=self.browse_source).grid(row=0, column=2, padx=5, pady=5)
+        self.lbl_source = ctk.CTkLabel(self.config_frame, text="來源資料夾:", font=self.font_main)
+        self.lbl_source.grid(row=0, column=0, padx=15, pady=(20, 10), sticky="w")
         
+        self.source_var = ctk.StringVar(value=str(Path("source_images").resolve()))
+        self.entry_source = ctk.CTkEntry(self.config_frame, textvariable=self.source_var, font=self.font_main, height=35)
+        self.entry_source.grid(row=0, column=1, padx=(0, 15), pady=(20, 10), sticky="ew")
+        
+        self.btn_source = ctk.CTkButton(self.config_frame, text="選擇資料夾", font=self.font_main, width=100, height=35, command=self.browse_source)
+        self.btn_source.grid(row=0, column=2, padx=(0, 15), pady=(20, 10))
+
         # 輸出資料夾
-        ttk.Label(frame_config, text="輸出資料夾:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.target_var = tk.StringVar(value=str(Path("processed_images").resolve()))
-        ttk.Entry(frame_config, textvariable=self.target_var, width=50).grid(row=1, column=1, padx=5, pady=5)
-        ttk.Button(frame_config, text="瀏覽...", command=self.browse_target).grid(row=1, column=2, padx=5, pady=5)
+        self.lbl_target = ctk.CTkLabel(self.config_frame, text="輸出資料夾:", font=self.font_main)
+        self.lbl_target.grid(row=1, column=0, padx=15, pady=10, sticky="w")
         
+        self.target_var = ctk.StringVar(value=str(Path("processed_images").resolve()))
+        self.entry_target = ctk.CTkEntry(self.config_frame, textvariable=self.target_var, font=self.font_main, height=35)
+        self.entry_target.grid(row=1, column=1, padx=(0, 15), pady=10, sticky="ew")
+        
+        self.btn_target = ctk.CTkButton(self.config_frame, text="選擇資料夾", font=self.font_main, width=100, height=35, command=self.browse_target)
+        self.btn_target.grid(row=1, column=2, padx=(0, 15), pady=10)
+
         # 處理模式
-        ttk.Label(frame_config, text="處理模式:").grid(row=2, column=0, sticky=tk.W, pady=5)
-        self.mode_var = tk.BooleanVar(value=False) # False=Copy, True=Move
-        frame_mode = ttk.Frame(frame_config)
-        frame_mode.grid(row=2, column=1, sticky=tk.W, padx=5)
-        ttk.Radiobutton(frame_mode, text="複製 (保留原檔)", variable=self.mode_var, value=False).pack(side=tk.LEFT, padx=5)
-        ttk.Radiobutton(frame_mode, text="移動 (處理後刪除原檔)", variable=self.mode_var, value=True).pack(side=tk.LEFT, padx=5)
+        self.lbl_mode = ctk.CTkLabel(self.config_frame, text="處理模式:", font=self.font_main)
+        self.lbl_mode.grid(row=2, column=0, padx=15, pady=(10, 20), sticky="w")
         
-        # --- 執行區塊 ---
-        frame_action = ttk.Frame(self.root, padding=10)
-        frame_action.pack(fill=tk.X, padx=10)
+        self.mode_var = ctk.BooleanVar(value=False) # False=Copy, True=Move
+        self.radio_frame = ctk.CTkFrame(self.config_frame, fg_color="transparent")
+        self.radio_frame.grid(row=2, column=1, columnspan=2, padx=(0, 15), pady=(10, 20), sticky="w")
         
-        self.btn_start = ttk.Button(frame_action, text="🚀 開始執行辨識與改名", command=self.start_processing)
-        self.btn_start.pack(fill=tk.X, ipady=10)
+        self.radio_copy = ctk.CTkRadioButton(self.radio_frame, text="複製 (保留原始圖片)", variable=self.mode_var, value=False, font=self.font_main)
+        self.radio_copy.pack(side="left", padx=(0, 20))
         
-        # --- 版權聲明 ---
+        self.radio_move = ctk.CTkRadioButton(self.radio_frame, text="移動 (處理後刪除原圖)", variable=self.mode_var, value=True, font=self.font_main)
+        self.radio_move.pack(side="left")
+
+        # --- 日誌區塊 ---
+        self.log_frame = ctk.CTkFrame(self, corner_radius=10)
+        self.log_frame.grid(row=2, column=0, padx=20, pady=10, sticky="nsew")
+        self.log_frame.grid_rowconfigure(0, weight=1)
+        self.log_frame.grid_columnconfigure(0, weight=1)
+        
+        self.log_text = ctk.CTkTextbox(self.log_frame, font=self.font_log, state="disabled", wrap="word", fg_color="#1E1E1E", text_color="#00FF00")
+        self.log_text.grid(row=0, column=0, padx=15, pady=15, sticky="nsew")
+
+        # --- 底部執行與版權區塊 ---
+        self.bottom_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.bottom_frame.grid(row=3, column=0, padx=20, pady=(10, 20), sticky="ew")
+        self.bottom_frame.grid_columnconfigure(0, weight=1)
+        
+        self.btn_start = ctk.CTkButton(self.bottom_frame, text="🚀 開始執行辨識與自動改名", font=("Microsoft JhengHei UI", 16, "bold"), height=50, corner_radius=8, command=self.start_processing)
+        self.btn_start.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        
         current_year = datetime.datetime.now().year
         year_str = "2026" if current_year == 2026 else f"2026-{current_year}"
-        lbl_copyright = ttk.Label(self.root, text=f"Copyright © {year_str} Youzih", foreground="gray")
-        lbl_copyright.pack(side=tk.BOTTOM, pady=(0, 10))
-        
-        # --- 紀錄區塊 ---
-        frame_log = ttk.LabelFrame(self.root, text="處理紀錄", padding=10)
-        frame_log.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        self.log_text = tk.Text(frame_log, wrap=tk.WORD, state=tk.DISABLED, bg="#1e1e1e", fg="#00ff00", font=("Consolas", 11))
-        scrollbar = ttk.Scrollbar(frame_log, command=self.log_text.yview)
-        self.log_text.configure(yscrollcommand=scrollbar.set)
-        
-        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.lbl_copyright = ctk.CTkLabel(self.bottom_frame, text=f"Copyright © {year_str} Youzih | Made with ❤️", font=("Microsoft JhengHei UI", 12), text_color="gray")
+        self.lbl_copyright.grid(row=1, column=0)
 
     def browse_source(self):
         d = filedialog.askdirectory(initialdir=self.source_var.get())
@@ -103,21 +129,21 @@ class OCRDesktopApp:
         try:
             while True:
                 msg = self.log_queue.get_nowait()
-                self.log_text.configure(state=tk.NORMAL)
-                self.log_text.insert(tk.END, msg + "\n")
-                self.log_text.see(tk.END)
-                self.log_text.configure(state=tk.DISABLED)
+                self.log_text.configure(state="normal")
+                self.log_text.insert("end", msg + "\n")
+                self.log_text.see("end")
+                self.log_text.configure(state="disabled")
         except queue.Empty:
             pass
-        self.root.after(100, self.process_log_queue)
+        self.after(100, self.process_log_queue)
 
     def start_processing(self):
         if self.is_processing: return
         self.is_processing = True
-        self.btn_start.configure(state=tk.DISABLED, text="處理中，請稍候...")
-        self.log_text.configure(state=tk.NORMAL)
-        self.log_text.delete(1.0, tk.END)
-        self.log_text.configure(state=tk.DISABLED)
+        self.btn_start.configure(state="disabled", text="處理中，請稍候...")
+        self.log_text.configure(state="normal")
+        self.log_text.delete("1.0", "end")
+        self.log_text.configure(state="disabled")
         
         source_dir = Path(self.source_var.get())
         target_dir = Path(self.target_var.get())
@@ -212,22 +238,17 @@ class OCRDesktopApp:
             with open(hash_file, "w", encoding="utf-8") as f:
                 json.dump(list(processed_hashes), f)
                 
-            self.log("====== 所有圖片處理完畢！ ======")
+            self.log("====== 🎉 所有圖片處理完畢！ ======")
             
         except Exception as e:
             self.log(f"[嚴重錯誤] {e}")
         finally:
             self.is_processing = False
-            self.root.after(0, lambda: self.btn_start.configure(state=tk.NORMAL, text="🚀 開始執行辨識與改名"))
+            self.after(0, lambda: self.btn_start.configure(state="normal", text="🚀 開始執行辨識與自動改名"))
 
 def launch_gui():
-    root = tk.Tk()
-    
-    # 套用 Windows 11 現代化深色主題
-    sv_ttk.set_theme("dark")
-    
-    app = OCRDesktopApp(root)
-    root.mainloop()
+    app = OCRDesktopApp()
+    app.mainloop()
 
 if __name__ == "__main__":
     launch_gui()
