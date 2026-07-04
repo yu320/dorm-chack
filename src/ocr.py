@@ -16,19 +16,28 @@ class OCREngine:
         import cv2
         import numpy as np
         
-        # 嘗試使用 OpenCV 讀取 (處理中文路徑)
-        img_array = np.fromfile(image_path, np.uint8)
-        img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-        
-        if img is None:
-            # 如果 OpenCV 讀取失敗（例如 WEBP 被標示為 JPG）
-            # 啟用自動轉檔機制：呼叫 PIL 強制解析檔案標頭並轉為 RGB 陣列
-            try:
-                from PIL import Image
-                pil_img = Image.open(image_path).convert("RGB")
+        if image_path.lower().endswith('.pdf'):
+            import pypdfium2 as pdfium
+            pdf = pdfium.PdfDocument(image_path)
+            if len(pdf) > 0:
+                page = pdf[0]
+                pil_img = page.render(scale=2).to_pil()
                 img = np.array(pil_img)
-            except Exception as e:
-                raise ValueError(f"無法讀取該圖片，檔案可能已損壞或不支援: {e}")
+            else:
+                raise ValueError("PDF 檔案沒有頁面")
+        else:
+            # 嘗試使用 OpenCV 讀取 (處理中文路徑)
+            img_array = np.fromfile(image_path, np.uint8)
+            img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+            
+            if img is None:
+                # 啟用自動轉檔機制
+                try:
+                    from PIL import Image
+                    pil_img = Image.open(image_path).convert("RGB")
+                    img = np.array(pil_img)
+                except Exception as e:
+                    raise ValueError(f"無法讀取該圖片，檔案可能已損壞或不支援: {e}")
             
         results = self.reader.readtext(img)
         recognized_text = " ".join([res[1] for res in results])

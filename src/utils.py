@@ -2,8 +2,15 @@ import re
 import shutil
 from pathlib import Path
 
-def clean_filename(text: str) -> str:
+def clean_filename(text: str, blacklist: list[str] = None) -> str:
     """清理 OCR 辨識出的文字，使其符合作業系統的檔名規範，並智慧過濾雜訊。"""
+    # 過濾黑名單
+    if blacklist:
+        for word in blacklist:
+            word = word.strip()
+            if word:
+                text = text.replace(word, "")
+                
     # 移除 Windows/Linux 不允許的字元 \ / : * ? " < > | 換行符與定位符
     cleaned = re.sub(r'[\/*?:"<>|\\\t\r\n]', "", text)
 
