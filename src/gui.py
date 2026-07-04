@@ -16,8 +16,17 @@ class OCRDesktopApp(ctk.CTk):
         super().__init__()
 
         self.title("圖片文字辨識與自動改名工具")
-        self.geometry("1000x800")
-        self.minsize(950, 750)
+        
+        # 取得螢幕解析度並將視窗置中，適應筆電小螢幕
+        window_width = 900
+        window_height = 650
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        center_x = int(screen_width / 2 - window_width / 2)
+        center_y = int(screen_height / 2 - window_height / 2)
+        
+        self.geometry(f"{window_width}x{window_height}+{center_x}+{center_y}")
+        self.minsize(800, 600)
         
         # 載入設定檔
         self.app_settings = load_settings()
