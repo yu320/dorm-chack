@@ -164,26 +164,39 @@ class OCRDesktopApp(ctk.CTk):
         self.control_frame.grid(row=2, column=0, padx=30, pady=(0, 30), sticky="ew")
         self.control_frame.grid_columnconfigure(0, weight=1)
         
+        self.lbl_status = ctk.CTkLabel(self.control_frame, text="準備就緒，等待開始...", font=("Microsoft JhengHei UI", 14), text_color="gray")
+        self.lbl_status.grid(row=0, column=0, columnspan=3, pady=(0, 5))
+        
         self.progress_bar = ctk.CTkProgressBar(self.control_frame, height=12, corner_radius=6)
-        self.progress_bar.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 20))
+        self.progress_bar.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 20))
         self.progress_bar.set(0)
         
         self.btn_start = ctk.CTkButton(self.control_frame, text="🚀 開始執行批次改名", font=("Microsoft JhengHei UI", 16, "bold"), height=55, corner_radius=10, command=self.start_processing)
-        self.btn_start.grid(row=1, column=0, sticky="ew", padx=(0, 10))
+        self.btn_start.grid(row=2, column=0, sticky="ew", padx=(0, 10))
         
         self.btn_cancel = ctk.CTkButton(self.control_frame, text="⛔ 停止", font=("Microsoft JhengHei UI", 16, "bold"), fg_color="#D9534F", hover_color="#C9302C", height=55, width=120, corner_radius=10, command=self.cancel_processing, state="disabled")
-        self.btn_cancel.grid(row=1, column=1, padx=(0, 10))
+        self.btn_cancel.grid(row=2, column=1, padx=(0, 10))
         
         self.btn_open_folder = ctk.CTkButton(self.control_frame, text="📂 開啟輸出資料夾", font=("Microsoft JhengHei UI", 16, "bold"), fg_color="#5CB85C", hover_color="#4CAE4C", height=55, width=180, corner_radius=10, command=self.open_output_folder)
-        self.btn_open_folder.grid(row=1, column=2)
+        self.btn_open_folder.grid(row=2, column=2)
 
     def create_logs_frame(self):
         self.logs_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
         self.logs_frame.grid_rowconfigure(1, weight=1)
         self.logs_frame.grid_columnconfigure(0, weight=1)
         
-        lbl_title = ctk.CTkLabel(self.logs_frame, text="📜 處理日誌", font=self.font_title)
-        lbl_title.grid(row=0, column=0, padx=30, pady=(30, 10), sticky="w")
+        header_frame = ctk.CTkFrame(self.logs_frame, fg_color="transparent")
+        header_frame.grid(row=0, column=0, padx=30, pady=(30, 10), sticky="ew")
+        header_frame.grid_columnconfigure(0, weight=1)
+        
+        lbl_title = ctk.CTkLabel(header_frame, text="📜 處理日誌", font=self.font_title)
+        lbl_title.grid(row=0, column=0, sticky="w")
+        
+        btn_clear_log = ctk.CTkButton(header_frame, text="🗑️ 清除畫面", font=self.font_main, width=100, command=self.clear_log_screen)
+        btn_clear_log.grid(row=0, column=1, padx=(0, 10))
+        
+        btn_open_log = ctk.CTkButton(header_frame, text="📂 開啟日誌資料夾", font=self.font_main, width=150, fg_color="#5CB85C", hover_color="#4CAE4C", command=self.open_output_folder)
+        btn_open_log.grid(row=0, column=2)
         
         self.log_text = ctk.CTkTextbox(self.logs_frame, font=self.font_log, state="disabled", wrap="word", fg_color="#1E1E1E", text_color="#2ECC71", corner_radius=10)
         self.log_text.grid(row=1, column=0, padx=30, pady=(10, 30), sticky="nsew")
@@ -387,6 +400,11 @@ class OCRDesktopApp(ctk.CTk):
         self.log_text.see("end")
         self.log_text.configure(state="disabled")
 
+    def clear_log_screen(self):
+        self.log_text.configure(state="normal")
+        self.log_text.delete("1.0", "end")
+        self.log_text.configure(state="disabled")
+
     def process_queue(self):
         try:
             while True:
@@ -395,12 +413,21 @@ class OCRDesktopApp(ctk.CTk):
                     self.is_processing = False
                     self.btn_start.configure(state="normal", text="🚀 開始執行批次改名")
                     self.btn_cancel.configure(state="disabled", text="⛔ 停止")
+                    self.lbl_status.configure(text="✅ 所有任務已處理完畢！", text_color="#2ECC71")
                 elif msg:
                     self.update_log(msg)
+                    if "初始化" in msg or "成功載入" in msg:
+                        self.lbl_status.configure(text="⏳ " + msg, text_color="#F1C40F")
+                    elif "處理已終止" in msg:
+                        self.lbl_status.configure(text="⛔ 處理已強制終止", text_color="#E74C3C")
                 
                 if stats:
                     success, failed, total = stats
-                    if total > 0: self.progress_bar.set((success + failed) / total)
+                    if total > 0: 
+                        progress_val = (success + failed) / total
+                        self.progress_bar.set(progress_val)
+                        if progress_val < 1.0:
+                            self.lbl_status.configure(text=f"🔄 正在處理圖片... ({success+failed}/{total})", text_color="#3498DB")
                     self.val_total.configure(text=str(total))
                     self.val_success.configure(text=str(success))
                     self.val_failed.configure(text=str(failed))
@@ -412,6 +439,7 @@ class OCRDesktopApp(ctk.CTk):
         if self.is_processing:
             self.processor.cancel()
             self.btn_cancel.configure(state="disabled", text="正在停止...")
+            self.lbl_status.configure(text="⚠️ 正在強制中斷，請稍候...", text_color="#E74C3C")
             self.update_log("⚠️ 觸發停止，等待當前任務結束...")
 
     def start_processing(self):
@@ -421,6 +449,7 @@ class OCRDesktopApp(ctk.CTk):
         self.save_current_settings()
         self.btn_start.configure(state="disabled", text="處理中，請稍候...")
         self.btn_cancel.configure(state="normal", text="⛔ 停止")
+        self.lbl_status.configure(text="⏳ 準備啟動 AI 引擎...", text_color="#F1C40F")
         self.progress_bar.set(0)
         self.update_log("--------------------------------")
         
