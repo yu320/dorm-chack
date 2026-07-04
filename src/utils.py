@@ -25,11 +25,18 @@ def clean_filename(text: str) -> str:
     return cleaned
 
 def get_unique_path(target_dir: Path, base_name: str, ext: str) -> Path:
-    """處理檔名衝突：若目的資料夾已有同名檔案，自動加上數字後綴。"""
+    """處理檔名衝突：若目的資料夾已有同名檔案，自動加上時間標籤。"""
     dest_path = target_dir / f"{base_name}{ext}"
+    if not dest_path.exists():
+        return dest_path
+        
+    import datetime
+    now_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    dest_path = target_dir / f"{base_name}_{now_str}{ext}"
+    
     counter = 1
     while dest_path.exists():
-        dest_path = target_dir / f"{base_name}_{counter}{ext}"
+        dest_path = target_dir / f"{base_name}_{now_str}_{counter}{ext}"
         counter += 1
     return dest_path
 

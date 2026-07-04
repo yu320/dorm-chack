@@ -5,8 +5,10 @@ import queue
 import datetime
 import hashlib
 import json
+import os
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import windnd
 
 from src.ocr import OCREngine
 from src.utils import clean_filename, get_unique_path, move_or_copy_file
@@ -21,13 +23,15 @@ class OCRDesktopApp(ctk.CTk):
         super().__init__()
 
         self.title("圖片文字辨識與自動改名工具")
-        self.geometry("800x650")
-        self.minsize(700, 600)
+        self.geometry("850x700")
+        self.minsize(800, 650)
         
         # 狀態與資源
         self.ocr_engine = None
         self.is_processing = False
+        self.is_cancelled = False
         self.log_queue = queue.Queue()
+        self.progress_queue = queue.Queue()
         
         # 設定字型
         self.font_main = ("Microsoft JhengHei UI", 14)
@@ -37,7 +41,10 @@ class OCRDesktopApp(ctk.CTk):
         self.create_widgets()
         
         # 啟動佇列監聽
-        self.after(100, self.process_log_queue)
+        self.after(100, self.process_queue)
+        
+        # 綁定拖曳功能
+        windnd.hook_dropfiles(self, func=self.on_drop)
 
     def create_widgets(self):
         # 佈局設定
@@ -78,7 +85,7 @@ class OCRDesktopApp(ctk.CTk):
         self.btn_target = ctk.CTkButton(self.config_frame, text="選擇資料夾", font=self.font_main, width=100, height=35, command=self.browse_target)
         self.btn_target.grid(row=1, column=2, padx=(0, 15), pady=10)
 
-        # 處理模式
+        # 處理模式與進度標示
         self.lbl_mode = ctk.CTkLabel(self.config_frame, text="處理模式:", font=self.font_main)
         self.lbl_mode.grid(row=2, column=0, padx=15, pady=(10, 20), sticky="w")
         
@@ -91,6 +98,9 @@ class OCRDesktopApp(ctk.CTk):
         
         self.radio_move = ctk.CTkRadioButton(self.radio_frame, text="移動 (處理後刪除原圖)", variable=self.mode_var, value=True, font=self.font_main)
         self.radio_move.pack(side="left")
+        
+        self.lbl_drag_hint = ctk.CTkLabel(self.radio_frame, text="💡 提示: 您可以直接將資料夾拖曳至視窗內", font=("Microsoft JhengHei UI", 12), text_color="gray")
+        self.lbl_drag_hint.pack(side="right", padx=20)
 
         # --- 日誌區塊 ---
         self.log_frame = ctk.CTkFrame(self, corner_radius=10)
@@ -101,18 +111,60 @@ class OCRDesktopApp(ctk.CTk):
         self.log_text = ctk.CTkTextbox(self.log_frame, font=self.font_log, state="disabled", wrap="word", fg_color="#1E1E1E", text_color="#00FF00")
         self.log_text.grid(row=0, column=0, padx=15, pady=15, sticky="nsew")
 
+        # --- 進度條區塊 ---
+        self.progress_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.progress_frame.grid(row=3, column=0, padx=20, pady=(0, 10), sticky="ew")
+        self.progress_frame.grid_columnconfigure(0, weight=1)
+        
+        self.progress_bar = ctk.CTkProgressBar(self.progress_frame)
+        self.progress_bar.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+        self.progress_bar.set(0)
+        
+        self.lbl_progress_text = ctk.CTkLabel(self.progress_frame, text="進度: 0 / 0 (0%)", font=self.font_main)
+        self.lbl_progress_text.grid(row=0, column=1)
+
         # --- 底部執行與版權區塊 ---
         self.bottom_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.bottom_frame.grid(row=3, column=0, padx=20, pady=(10, 20), sticky="ew")
+        self.bottom_frame.grid(row=4, column=0, padx=20, pady=(0, 20), sticky="ew")
         self.bottom_frame.grid_columnconfigure(0, weight=1)
         
-        self.btn_start = ctk.CTkButton(self.bottom_frame, text="🚀 開始執行辨識與自動改名", font=("Microsoft JhengHei UI", 16, "bold"), height=50, corner_radius=8, command=self.start_processing)
-        self.btn_start.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        self.action_frame = ctk.CTkFrame(self.bottom_frame, fg_color="transparent")
+        self.action_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        self.action_frame.grid_columnconfigure(0, weight=1)
+        self.action_frame.grid_columnconfigure(1, weight=0)
+        self.action_frame.grid_columnconfigure(2, weight=0)
+        
+        self.btn_start = ctk.CTkButton(self.action_frame, text="🚀 開始執行辨識與自動改名", font=("Microsoft JhengHei UI", 16, "bold"), height=50, corner_radius=8, command=self.start_processing)
+        self.btn_start.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+        
+        self.btn_cancel = ctk.CTkButton(self.action_frame, text="⛔ 停止", font=("Microsoft JhengHei UI", 16, "bold"), fg_color="#D9534F", hover_color="#C9302C", height=50, width=100, corner_radius=8, command=self.cancel_processing, state="disabled")
+        self.btn_cancel.grid(row=0, column=1, padx=(0, 10))
+        
+        self.btn_open_folder = ctk.CTkButton(self.action_frame, text="📂 開啟輸出資料夾", font=("Microsoft JhengHei UI", 16, "bold"), fg_color="#5CB85C", hover_color="#4CAE4C", height=50, width=180, corner_radius=8, command=self.open_output_folder)
+        self.btn_open_folder.grid(row=0, column=2)
         
         current_year = datetime.datetime.now().year
         year_str = "2026" if current_year == 2026 else f"2026-{current_year}"
         self.lbl_copyright = ctk.CTkLabel(self.bottom_frame, text=f"Copyright © {year_str} Youzih | Made with ❤️", font=("Microsoft JhengHei UI", 12), text_color="gray")
         self.lbl_copyright.grid(row=1, column=0)
+
+    def on_drop(self, files):
+        if not files: return
+        # windnd returns files as byte strings containing the paths
+        try:
+            path = files[0].decode('gbk')
+        except:
+            try:
+                path = files[0].decode('utf-8')
+            except:
+                path = ""
+                
+        if os.path.isdir(path):
+            self.source_var.set(path)
+            # 自動推導目標資料夾
+            suggested_target = os.path.join(path, "processed_images")
+            self.target_var.set(suggested_target)
+            self.log(f"[拖曳] 已設定來源資料夾: {path}")
 
     def browse_source(self):
         d = filedialog.askdirectory(initialdir=self.source_var.get())
@@ -124,8 +176,12 @@ class OCRDesktopApp(ctk.CTk):
 
     def log(self, message):
         self.log_queue.put(message)
+        
+    def update_progress(self, current, total):
+        self.progress_queue.put((current, total))
 
-    def process_log_queue(self):
+    def process_queue(self):
+        # 處理日誌
         try:
             while True:
                 msg = self.log_queue.get_nowait()
@@ -135,12 +191,43 @@ class OCRDesktopApp(ctk.CTk):
                 self.log_text.configure(state="disabled")
         except queue.Empty:
             pass
-        self.after(100, self.process_log_queue)
+            
+        # 處理進度條
+        try:
+            while True:
+                current, total = self.progress_queue.get_nowait()
+                if total > 0:
+                    pct = current / total
+                    self.progress_bar.set(pct)
+                    self.lbl_progress_text.configure(text=f"進度: {current} / {total} ({int(pct*100)}%)")
+        except queue.Empty:
+            pass
+            
+        self.after(100, self.process_queue)
+
+    def open_output_folder(self):
+        path = self.target_var.get()
+        if os.path.exists(path):
+            os.startfile(path)
+        else:
+            messagebox.showwarning("提示", "輸出資料夾尚未建立！")
+
+    def cancel_processing(self):
+        if self.is_processing:
+            self.is_cancelled = True
+            self.btn_cancel.configure(state="disabled", text="正在停止...")
+            self.log("⚠️ 已觸發緊急停止，等待當前任務結束後中止...")
 
     def start_processing(self):
         if self.is_processing: return
         self.is_processing = True
+        self.is_cancelled = False
+        
         self.btn_start.configure(state="disabled", text="處理中，請稍候...")
+        self.btn_cancel.configure(state="normal", text="⛔ 停止")
+        self.progress_bar.set(0)
+        self.lbl_progress_text.configure(text="進度: 0 / 0 (0%)")
+        
         self.log_text.configure(state="normal")
         self.log_text.delete("1.0", "end")
         self.log_text.configure(state="disabled")
@@ -159,7 +246,9 @@ class OCRDesktopApp(ctk.CTk):
                 return
             
             image_paths = [p for p in source_dir.iterdir() if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS]
-            if not image_paths:
+            total_images = len(image_paths)
+            
+            if total_images == 0:
                 self.log(f"[提示] 找不到支援的圖片檔 ({', '.join(SUPPORTED_EXTENSIONS)})")
                 return
 
@@ -167,7 +256,11 @@ class OCRDesktopApp(ctk.CTk):
             if not self.ocr_engine:
                 self.ocr_engine = OCREngine()
                 
-            self.log(f"成功載入！共找到 {len(image_paths)} 張圖片，開始平行處理...")
+            self.log(f"成功載入！共找到 {total_images} 張圖片，開始處理...")
+            
+            # GPU OOM 防護：如果有 GPU 就單開，沒有 GPU 才平行處理
+            max_workers = 1 if hasattr(self.ocr_engine, 'use_gpu') and self.ocr_engine.use_gpu else 4
+            self.log(f"已啟用效能最佳化：執行緒數量為 {max_workers}")
             
             # 建立目錄
             target_dir.mkdir(parents=True, exist_ok=True)
@@ -189,8 +282,13 @@ class OCRDesktopApp(ctk.CTk):
                     
             log_lock = threading.Lock()
             hash_lock = threading.Lock()
+            
+            processed_count = 0
 
             def process_image(img_path):
+                if self.is_cancelled:
+                    return None
+                    
                 # Hash check
                 h_md5 = hashlib.md5()
                 with open(img_path, "rb") as f:
@@ -230,21 +328,34 @@ class OCRDesktopApp(ctk.CTk):
                 except Exception as e:
                     return f"[錯誤] {img_path.name} -> {e}"
 
-            with ThreadPoolExecutor(max_workers=4) as executor:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = [executor.submit(process_image, p) for p in image_paths]
                 for future in as_completed(futures):
-                    self.log(future.result())
+                    if self.is_cancelled:
+                        break
+                    res = future.result()
+                    if res:
+                        self.log(res)
+                    processed_count += 1
+                    self.update_progress(processed_count, total_images)
 
             with open(hash_file, "w", encoding="utf-8") as f:
                 json.dump(list(processed_hashes), f)
                 
-            self.log("====== 🎉 所有圖片處理完畢！ ======")
+            if self.is_cancelled:
+                self.log("====== 🚫 處理已終止 ======")
+            else:
+                self.log("====== 🎉 所有圖片處理完畢！ ======")
             
         except Exception as e:
             self.log(f"[嚴重錯誤] {e}")
         finally:
             self.is_processing = False
-            self.after(0, lambda: self.btn_start.configure(state="normal", text="🚀 開始執行辨識與自動改名"))
+            self.after(0, self.reset_ui_state)
+
+    def reset_ui_state(self):
+        self.btn_start.configure(state="normal", text="🚀 開始執行辨識與自動改名")
+        self.btn_cancel.configure(state="disabled", text="⛔ 停止")
 
 def launch_gui():
     app = OCRDesktopApp()

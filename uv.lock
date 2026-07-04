@@ -95,6 +95,7 @@ dependencies = [
     { name = "easyocr" },
     { name = "torch" },
     { name = "torchvision" },
+    { name = "windnd" },
 ]
 
 [package.metadata]
@@ -103,6 +104,7 @@ requires-dist = [
     { name = "easyocr", specifier = ">=1.7.2" },
     { name = "torch", specifier = ">=2.12.1" },
     { name = "torchvision", specifier = ">=0.27.1" },
+    { name = "windnd", specifier = ">=1.0.7" },
 ]
 
 [[package]]
@@ -790,4 +792,12 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f6/cc/6253133b5bb138fc3306cebfbda2c520f545d36b5be2c7255cc528bb45d6/typing_extensions-4.16.0.tar.gz", hash = "sha256:dc983d19a509c94dba722ee6abd33940f7c05a89e243c47e907eb4db6f1a43e5", size = 113555, upload-time = "2026-07-02T08:40:05.92Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl", hash = "sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8", size = 45571, upload-time = "2026-07-02T08:40:04.659Z" },
+]
+
+[[package]]
+name = "windnd"
+version = "1.0.7"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fe/6b/cb24d7638780a1d12e41b30839971e48048788ca54ec0e7f58a800a5e449/windnd-1.0.7-py3-none-any.whl", hash = "sha256:357ed0b00e801342a6997f851ee3d5185da2ad4827e0d404d16a2684006c0244", size = 4266, upload-time = "2020-08-17T04:11:11.359Z" },
 ]

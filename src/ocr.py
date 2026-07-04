@@ -3,11 +3,13 @@ import easyocr
 class OCREngine:
     def __init__(self, languages: list[str] = None):
         """初始化 OCR 引擎。預設使用繁體中文與英文。"""
+        import torch
         if languages is None:
             languages = ["ch_tra", "en"]
         print("正在載入 OCR 辨識引擎（首次執行會下載模型，請稍候）...")
-        self.reader = easyocr.Reader(languages)
-        print("OCR 辨識引擎載入成功！")
+        self.use_gpu = torch.cuda.is_available()
+        self.reader = easyocr.Reader(languages, gpu=self.use_gpu)
+        print(f"OCR 辨識引擎載入成功！(使用 {'GPU' if self.use_gpu else 'CPU'})")
 
     def extract_text(self, image_path: str) -> str:
         """從圖片中提取文字，並以空白組合所有辨識到的片段。"""
