@@ -19,7 +19,7 @@ if not exist ".venv" (
     .bin\uv.exe venv --python 3.11
 )
 echo [系統] 正在安裝 CUDA AI 套件與圖形介面...
-.bin\uv.exe pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+.bin\uv.exe pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
 .bin\uv.exe pip install easyocr pypdfium2 customtkinter windnd
 echo [系統] 正在啟動圖形介面...
 ".venv\Scripts\python.exe" main.py --gui
