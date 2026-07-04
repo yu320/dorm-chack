@@ -10,7 +10,7 @@ from pathlib import Path
 from src.config import load_settings, save_settings
 from src.processor import BatchProcessor
 
-APP_VERSION = "v1.8.0"
+APP_VERSION = "v1.8.2"
 
 class OCRDesktopApp(ctk.CTk):
     def __init__(self):
