@@ -18,12 +18,12 @@ jobs:
       - name: Create Release Zip
         run: |
           # 將所有需要發布的檔案打包成 zip
-          zip -r dorm-chack-release.zip src main.py gui.py Run_CPU.bat Run_GPU.bat 啟動介面.vbs pyproject.toml uv.lock settings.json README.md
+          zip -r dorm-chack-release-${{ github.ref_name }}.zip src main.py gui.py Run_CPU.bat Run_GPU.bat 啟動介面.vbs pyproject.toml uv.lock settings.json README.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dorm-chack-release.zip
+          files: dorm-chack-release-${{ github.ref_name }}.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
