@@ -1,27 +1,27 @@
 @echo off
-title 圖片文字辨識與改名工具 (NVIDIA 顯卡加速版)
+chcp 65001 >nul
+title Auto Renamer (GPU Mode)
 echo ==========================================
-echo  圖片文字辨識與自動重新命名工具 (NVIDIA加速版)
+echo    Auto Renamer - Initialization (GPU)
 echo ==========================================
 echo.
 if not exist ".bin\uv.exe" (
-    echo [系統提示] 尚未準備好環境，正在自動下載核心元件...
+    echo [System] Downloading required tools (uv)...
     mkdir .bin >nul 2>&1
-    powershell -Command "Invoke-WebRequest -Uri 'https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip' -OutFile 'uv.zip'"
+    powershell -Command "$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri 'https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip' -OutFile 'uv.zip'"
     powershell -Command "Expand-Archive -Path 'uv.zip' -DestinationPath '.' -Force"
     move "uv-x86_64-pc-windows-msvc\uv.exe" ".bin\" >nul
     rmdir /S /Q "uv-x86_64-pc-windows-msvc" >nul
     del "uv.zip" >nul
-    echo [系統提示] 下載完成！
+    echo [System] Download complete!
     echo.
 )
 if not exist ".venv" (
     .bin\uv.exe venv
 )
-echo [系統提示] 正在確認 GPU 版 AI 引擎...
-echo (注意：CUDA 引擎約 2.5GB，若是首次啟動請耐心等候下載)
-.bin\uv.exe pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-.bin\uv.exe pip install easyocr sv-ttk
-echo [系統提示] 啟動視窗介面中...
+echo [System] Installing packages (with CUDA support)...
+.bin\uv.exe pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+.bin\uv.exe pip install easyocr pypdfium2 customtkinter windnd
+echo [System] Starting application...
 start "" ".venv\Scripts\pythonw.exe" main.py --gui
 exit
