@@ -99,7 +99,7 @@ class OCRDesktopApp(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)
         
         self.sidebar_frame = ctk.CTkFrame(self, width=200, corner_radius=0)
-        self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
+        self.sidebar_frame.grid(row=0, column=0, rowspan=2, sticky="nsew")
         self.sidebar_frame.grid_rowconfigure(5, weight=1)
         
         self.logo_label = ctk.CTkLabel(self.sidebar_frame, text="✨ Auto Renamer", font=self.font_title)
@@ -125,8 +125,11 @@ class OCRDesktopApp(ctk.CTk):
                                               anchor="w", font=self.font_main, command=lambda: self.select_frame_by_name("guide"))
         self.btn_nav_guide.grid(row=4, column=0, sticky="ew")
         
+        self.copyright_label = ctk.CTkLabel(self.sidebar_frame, text="© 2026 yu320\nAll Rights Reserved", font=("Microsoft JhengHei UI", 12), text_color="gray")
+        self.copyright_label.grid(row=5, column=0, padx=20, pady=(20, 0), sticky="s")
+        
         self.version_label = ctk.CTkLabel(self.sidebar_frame, text=f"版本 {APP_VERSION}", font=("Microsoft JhengHei UI", 12), text_color="gray")
-        self.version_label.grid(row=6, column=0, padx=20, pady=(10, 5))
+        self.version_label.grid(row=6, column=0, padx=20, pady=(5, 20))
 
     def create_home_frame(self):
         self.home_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
