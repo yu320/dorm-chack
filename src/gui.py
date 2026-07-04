@@ -266,51 +266,67 @@ class OCRDesktopApp(ctk.CTk):
     def create_guide_frame(self):
         self.guide_frame = ctk.CTkScrollableFrame(self, corner_radius=0, fg_color="transparent")
         self.guide_frame.grid_columnconfigure(0, weight=1)
+        
         lbl_title = ctk.CTkLabel(self.guide_frame, text="📖 使用說明", font=self.font_title)
         lbl_title.grid(row=0, column=0, padx=30, pady=(30, 20), sticky="w")
         
-        guide_box = ctk.CTkFrame(self.guide_frame, corner_radius=15, fg_color="#2B2B2B")
-        guide_box.grid(row=1, column=0, padx=30, pady=(0, 30), sticky="ew")
-        guide_box.grid_columnconfigure(0, weight=1)
-
-        guide_content = """歡迎使用本工具！這是一個能幫您「全自動掃描圖片文字，並自動幫圖片改名」的超級小幫手。
-不用懂任何寫程式的知識，只要跟著以下三個簡單的步驟，就能輕鬆完成！
-
-🚀 步驟一：設定您的資料夾
---------------------------------------------------
-1. 來源資料夾：您可以點擊「瀏覽」按鈕，或直接將要處理的資料夾「拖曳」到首頁的輸入框內！
-2. 輸出資料夾：拖曳資料夾後，系統會自動幫您設定好輸出路徑。您也可以自行修改。
-3. 處理模式：
-   - 複製 (保留原檔)：您的原始圖片會安全地保留著，系統只會把改名後的圖片「複製」到輸出資料夾。
-   - 移動 (節省空間)：原始圖片在改名後就會被移走。
-
-🎨 步驟二：進階設定 (可選)
---------------------------------------------------
-如果您想自訂辨識的語言、支援的檔案格式(例如 PDF)、或是想過濾掉特定的檔名文字，
-都可以前往左側的「⚙️ 進階設定」進行勾選與調整。
-
-✨ 步驟三：一鍵開始自動改名！
---------------------------------------------------
-回到「🏠 控制中心」，點擊最下方大大的「🚀 開始執行批次改名」按鈕。
-處理完畢後，您可以點擊「📂 開啟輸出資料夾」，裡面會自動幫您分類好：
-- 📁 已辨識：成功改名的圖片都會乖乖待在這裡！
-- 📁 未辨識：如果圖片太模糊或沒有文字，會被放到這裡。
-- 📄 辨識紀錄.txt：裡面詳細記錄了每一張圖片辨識出的文字。
-
-❓ 常見問題 (Q&A)
---------------------------------------------------
-Q: 處理到一半我不小心關掉視窗了怎麼辦？
-A: 別擔心！程式有「記憶快取功能」。只要重新開啟軟體並按下開始，它會自動跳過已經處理過的圖片。
-   如果您想重新處理所有檔案，可以到進階設定點擊「🗑️ 清除快取」。
-
-Q: 為什麼有些圖片辨識出來的檔名怪怪的？
-A: 如果圖片上的文字太小、有陰影或太模糊，AI 有時候會辨識出亂碼。系統會盡量幫您過濾無效符號，但建議盡量使用清晰的圖片喔！
-"""
+        # 歡迎區塊 (亮色吸睛)
+        welcome_box = ctk.CTkFrame(self.guide_frame, corner_radius=15, fg_color="#2980B9")
+        welcome_box.grid(row=1, column=0, padx=30, pady=(0, 20), sticky="ew")
+        welcome_lbl = ctk.CTkLabel(welcome_box, text="✨ 歡迎使用！這是一個能幫您「全自動掃描圖片文字，並幫圖片改名」的小幫手。\n只要跟著以下三個簡單的步驟，就能輕鬆完成！", font=("Microsoft JhengHei UI", 16, "bold"), text_color="white", justify="left")
+        welcome_lbl.pack(padx=20, pady=20, anchor="w")
         
-        lbl_content = ctk.CTkTextbox(guide_box, font=("Microsoft JhengHei UI", 15), fg_color="transparent", text_color="#E0E0E0", wrap="word", height=600)
-        lbl_content.grid(row=0, column=0, padx=30, pady=30, sticky="nsew")
-        lbl_content.insert("1.0", guide_content)
-        lbl_content.configure(state="disabled")
+        # 建立步驟卡片的輔助函式
+        def create_step_card(parent, icon, title, content):
+            card = ctk.CTkFrame(parent, corner_radius=15, fg_color="#2B2B2B")
+            card.grid_columnconfigure(1, weight=1)
+            
+            lbl_icon = ctk.CTkLabel(card, text=icon, font=("Segoe UI Emoji", 40))
+            lbl_icon.grid(row=0, column=0, padx=(20, 10), pady=20, sticky="n")
+            
+            text_frame = ctk.CTkFrame(card, fg_color="transparent")
+            text_frame.grid(row=0, column=1, padx=(0, 20), pady=20, sticky="ew")
+            
+            lbl_title = ctk.CTkLabel(text_frame, text=title, font=("Microsoft JhengHei UI", 18, "bold"), text_color="#3498DB")
+            lbl_title.pack(anchor="w", pady=(0, 10))
+            
+            lbl_content = ctk.CTkLabel(text_frame, text=content, font=("Microsoft JhengHei UI", 15), text_color="#E0E0E0", justify="left")
+            lbl_content.pack(anchor="w")
+            
+            return card
+
+        # 步驟一
+        step1_text = "• 來源資料夾：您可以點擊「瀏覽」按鈕，或直接將資料夾「拖曳」到首頁的輸入框內！\n• 輸出資料夾：拖曳資料夾後，系統會自動設定好輸出路徑，您也可以自行修改。\n• 處理模式：建議選擇「複製 (安全)」，系統只會把改名後的圖片複製過去，保留原檔。"
+        card1 = create_step_card(self.guide_frame, "📁", "步驟一：設定您的資料夾", step1_text)
+        card1.grid(row=2, column=0, padx=30, pady=(0, 15), sticky="ew")
+
+        # 步驟二
+        step2_text = "如果您想自訂辨識的語言 (中/英/日/韓)、支援的檔案格式 (例如 PDF)，\n或是想過濾掉特定的檔名文字，都可以前往左側的「⚙️ 進階設定」進行勾選與調整。"
+        card2 = create_step_card(self.guide_frame, "⚙️", "步驟二：進階設定 (可選)", step2_text)
+        card2.grid(row=3, column=0, padx=30, pady=(0, 15), sticky="ew")
+        
+        # 步驟三
+        step3_text = "回到「🏠 控制中心」，點擊最下方大大的「🚀 開始執行批次改名」按鈕。\n處理完畢後點擊「📂 開啟輸出資料夾」，裡面會自動分類好：\n  - 📁 已辨識：成功改名的圖片\n  - 📁 未辨識：模糊或無文字的圖片\n  - 📄 辨識紀錄.txt：詳細的文字紀錄"
+        card3 = create_step_card(self.guide_frame, "🚀", "步驟三：一鍵開始自動改名！", step3_text)
+        card3.grid(row=4, column=0, padx=30, pady=(0, 30), sticky="ew")
+        
+        # Q&A 區塊
+        qa_lbl = ctk.CTkLabel(self.guide_frame, text="❓ 常見問題 (Q&A)", font=("Microsoft JhengHei UI", 18, "bold"))
+        qa_lbl.grid(row=5, column=0, padx=30, pady=(0, 10), sticky="w")
+        
+        qa_box = ctk.CTkFrame(self.guide_frame, corner_radius=15, fg_color="#1E1E1E")
+        qa_box.grid(row=6, column=0, padx=30, pady=(0, 30), sticky="ew")
+        qa_box.grid_columnconfigure(0, weight=1)
+        
+        q1 = ctk.CTkLabel(qa_box, text="Q: 處理到一半我不小心關掉視窗了怎麼辦？", font=("Microsoft JhengHei UI", 15, "bold"), text_color="#F1C40F")
+        q1.pack(anchor="w", padx=20, pady=(20, 5))
+        a1 = ctk.CTkLabel(qa_box, text="A: 別擔心！程式有「記憶快取功能」。重新開啟按下開始，會自動跳過已處理過的圖片。\n   若想重新處理，請至進階設定點擊「🗑️ 清除快取」。", font=("Microsoft JhengHei UI", 14), text_color="#CCCCCC", justify="left")
+        a1.pack(anchor="w", padx=20, pady=(0, 15))
+
+        q2 = ctk.CTkLabel(qa_box, text="Q: 為什麼有些圖片辨識出來的檔名怪怪的？", font=("Microsoft JhengHei UI", 15, "bold"), text_color="#F1C40F")
+        q2.pack(anchor="w", padx=20, pady=(5, 5))
+        a2 = ctk.CTkLabel(qa_box, text="A: 如果文字太小、有陰影或太模糊，AI 有時會辨識出亂碼。建議盡量使用清晰的圖片！", font=("Microsoft JhengHei UI", 14), text_color="#CCCCCC", justify="left")
+        a2.pack(anchor="w", padx=20, pady=(0, 20))
 
     def select_frame_by_name(self, name):
         self.btn_nav_home.configure(fg_color=("gray75", "gray25") if name == "home" else "transparent")
