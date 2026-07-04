@@ -21,5 +21,6 @@ echo [System] Installing CUDA AI packages and GUI...
 .bin\uv.exe pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 .bin\uv.exe pip install easyocr pypdfium2 customtkinter windnd
 echo [System] Starting GUI...
-start "" ".venv\Scripts\pythonw.exe" main.py --gui
+".venv\Scripts\python.exe" main.py --gui
+pause
 exit

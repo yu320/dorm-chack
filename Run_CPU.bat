@@ -20,5 +20,6 @@ if not exist ".venv" (
 echo [System] Installing AI packages and GUI...
 .bin\uv.exe pip install torch torchvision easyocr pypdfium2 customtkinter windnd
 echo [System] Starting GUI...
-start "" ".venv\Scripts\pythonw.exe" main.py --gui
+".venv\Scripts\python.exe" main.py --gui
+pause
 exit
