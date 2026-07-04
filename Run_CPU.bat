@@ -6,7 +6,7 @@ echo    Auto Renamer - Initialization (CPU)
 echo ==========================================
 echo.
 if not exist ".bin\uv.exe" (
-    echo [System] Downloading required tools (uv)...
+    echo [System] Downloading required tools uv...
     mkdir .bin >nul 2>&1
     powershell -Command "$ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri 'https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-pc-windows-msvc.zip' -OutFile 'uv.zip'"
     powershell -Command "Expand-Archive -Path 'uv.zip' -DestinationPath '.' -Force"
