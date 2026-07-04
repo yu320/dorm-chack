@@ -14,7 +14,7 @@ from src.ocr import OCREngine
 from src.utils import clean_filename, get_unique_path, move_or_copy_file
 from src.config import load_settings, save_settings, SUPPORTED_EXTENSIONS
 
-APP_VERSION = "v1.2.0"
+APP_VERSION = "v1.4.0"
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -50,6 +50,7 @@ class OCRDesktopApp(ctk.CTk):
         self.create_home_frame()
         self.create_settings_frame()
         self.create_logs_frame()
+        self.create_guide_frame()
         
         # 預設顯示首頁
         self.select_frame_by_name("home")
@@ -90,7 +91,7 @@ class OCRDesktopApp(ctk.CTk):
         
         self.sidebar_frame = ctk.CTkFrame(self, width=200, corner_radius=0)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
-        self.sidebar_frame.grid_rowconfigure(4, weight=1)
+        self.sidebar_frame.grid_rowconfigure(5, weight=1)
         
         # 標題
         self.logo_label = ctk.CTkLabel(self.sidebar_frame, text="✨ Auto Renamer", font=self.font_title)
@@ -112,12 +113,17 @@ class OCRDesktopApp(ctk.CTk):
                                               anchor="w", font=self.font_main, command=lambda: self.select_frame_by_name("settings"))
         self.btn_nav_settings.grid(row=3, column=0, sticky="ew")
         
+        self.btn_nav_guide = ctk.CTkButton(self.sidebar_frame, corner_radius=0, height=50, border_spacing=10, text="📖 使用說明",
+                                              fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray70", "gray30"),
+                                              anchor="w", font=self.font_main, command=lambda: self.select_frame_by_name("guide"))
+        self.btn_nav_guide.grid(row=4, column=0, sticky="ew")
+        
         # 版本與版權
         self.version_label = ctk.CTkLabel(self.sidebar_frame, text=f"版本 {APP_VERSION}", font=("Microsoft JhengHei UI", 12), text_color="gray")
-        self.version_label.grid(row=5, column=0, padx=20, pady=(10, 5))
+        self.version_label.grid(row=6, column=0, padx=20, pady=(10, 5))
         
         self.copyright_label = ctk.CTkLabel(self.sidebar_frame, text="© 2026 Youzih", font=("Microsoft JhengHei UI", 11), text_color="gray50")
-        self.copyright_label.grid(row=6, column=0, padx=20, pady=(0, 20))
+        self.copyright_label.grid(row=7, column=0, padx=20, pady=(0, 20))
 
     def create_home_frame(self):
         self.home_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="transparent")
@@ -275,10 +281,54 @@ class OCRDesktopApp(ctk.CTk):
         lbl_black_hint = ctk.CTkLabel(adv_box, text="輸入您想過濾的關鍵字（例如固定的公司名），每行一個，這些字詞將不會出現在檔名中", font=("Microsoft JhengHei UI", 12), text_color="gray")
         lbl_black_hint.grid(row=3, column=1, padx=(0, 20), pady=(0, 20), sticky="w")
 
+    def create_guide_frame(self):
+        self.guide_frame = ctk.CTkScrollableFrame(self, corner_radius=0, fg_color="transparent")
+        self.guide_frame.grid_columnconfigure(0, weight=1)
+        
+        lbl_title = ctk.CTkLabel(self.guide_frame, text="📖 使用說明", font=self.font_title)
+        lbl_title.grid(row=0, column=0, padx=30, pady=(30, 20), sticky="w")
+        
+        # 內容卡片
+        guide_box = ctk.CTkFrame(self.guide_frame, corner_radius=15, fg_color="#2B2B2B")
+        guide_box.grid(row=1, column=0, padx=30, pady=(0, 30), sticky="ew")
+        guide_box.grid_columnconfigure(0, weight=1)
+        
+        guide_text = """歡迎使用本工具！這是一個能幫您「全自動掃描圖片文字，並自動幫圖片改名」的超級小幫手。
+
+🚀 步驟一：選擇來源資料夾
+• 最簡單的方式：直接將您要處理的「資料夾」或是「檔案」拖曳到『🏠 控制中心』正中央的虛線大方框內。
+• 您也可以前往『⚙️ 進階設定』中，手動點擊「瀏覽」來指定路徑。
+
+🎨 步驟二：設定您的選項 (非必填)
+• 在『⚙️ 進階設定』中，您可以：
+  - 切換「複製（安全保留原檔）」或「移動（處理後刪除原檔）」。
+  - 勾選圖片中可能出現的語言（繁體中文、日文等）。
+  - 設定過濾關鍵字，避免特定的浮水印文字成為檔名的一部分。
+
+✨ 步驟三：一鍵開始自動改名！
+• 回到『🏠 控制中心』，點擊最下方大大的「🚀 開始執行批次改名」按鈕。
+• 接下來只需喝杯咖啡☕，看著上方的儀表板數字不斷增加！
+• 完成後點擊「📂 開啟輸出資料夾」，即可查看所有幫您重新命名好的精美檔案！
+
+❓ 常見問題 (Q&A)
+Q: 處理到一半不小心按到停止或關閉程式怎麼辦？
+A: 軟體內建「自動記憶機制 (Hash Cache)」。您只要重新開啟軟體並按開始，它會自動跳過已經處理過的圖片，無縫從中斷處繼續執行！
+
+Q: 為什麼有些圖片被丟到「未辨識」資料夾？
+A: 如果圖片沒有文字、文字太模糊，或是辨識出的文字全是您設定的「過濾關鍵字」，軟體會將它們歸類為未辨識。
+
+Q: 支援哪些檔案格式？
+A: 支援常見的 .jpg, .jpeg, .png, .bmp, .webp 以及掃描檔 .pdf。
+"""
+        
+        lbl_content = ctk.CTkLabel(guide_box, text=guide_text, font=("Microsoft JhengHei UI", 15), justify="left", wraplength=600)
+        lbl_content.grid(row=0, column=0, padx=30, pady=30, sticky="w")
+
     def select_frame_by_name(self, name):
         self.btn_nav_home.configure(fg_color=("gray75", "gray25") if name == "home" else "transparent")
         self.btn_nav_logs.configure(fg_color=("gray75", "gray25") if name == "logs" else "transparent")
         self.btn_nav_settings.configure(fg_color=("gray75", "gray25") if name == "settings" else "transparent")
+        self.btn_nav_guide.configure(fg_color=("gray75", "gray25") if name == "guide" else "transparent")
 
         if name == "home":
             self.home_frame.grid(row=0, column=1, sticky="nsew")
@@ -294,6 +344,11 @@ class OCRDesktopApp(ctk.CTk):
             self.settings_frame.grid(row=0, column=1, sticky="nsew")
         else:
             self.settings_frame.grid_forget()
+            
+        if name == "guide":
+            self.guide_frame.grid(row=0, column=1, sticky="nsew")
+        else:
+            self.guide_frame.grid_forget()
 
     def on_drop(self, files):
         if not files: return
