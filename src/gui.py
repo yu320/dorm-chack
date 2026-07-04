@@ -125,7 +125,7 @@ class OCRDesktopApp(ctk.CTk):
                                               anchor="w", font=self.font_main, command=lambda: self.select_frame_by_name("guide"))
         self.btn_nav_guide.grid(row=4, column=0, sticky="ew")
         
-        self.copyright_label = ctk.CTkLabel(self.sidebar_frame, text="© 2026 yu320\nAll Rights Reserved", font=("Microsoft JhengHei UI", 12), text_color="gray")
+        self.copyright_label = ctk.CTkLabel(self.sidebar_frame, text="© 2026 @youzih\nAll Rights Reserved", font=("Microsoft JhengHei UI", 12), text_color="gray")
         self.copyright_label.grid(row=5, column=0, padx=20, pady=(20, 0), sticky="s")
         
         self.version_label = ctk.CTkLabel(self.sidebar_frame, text=f"版本 {APP_VERSION}", font=("Microsoft JhengHei UI", 12), text_color="gray")
