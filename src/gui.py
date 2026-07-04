@@ -49,12 +49,16 @@ class OCRDesktopApp(ctk.CTk):
         self.font_title = ("Microsoft JhengHei UI", 20, "bold")
         self.font_giant = ("Microsoft JhengHei UI", 36, "bold")
         self.font_log = ("Consolas", 12)
-
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_rowconfigure(1, weight=0)
+        self.grid_columnconfigure(1, weight=1)
+        
         self.create_sidebar()
         self.create_home_frame()
         self.create_settings_frame()
         self.create_logs_frame()
         self.create_guide_frame()
+        self.create_global_footer()
         
         # 預設顯示首頁
         self.select_frame_by_name("home")
@@ -164,24 +168,25 @@ class OCRDesktopApp(ctk.CTk):
         self.lbl_current_path = ctk.CTkLabel(self.drop_zone, text=f"當前來源: {source_text}", font=self.font_main, text_color="#3498DB")
         self.lbl_current_path.grid(row=2, column=0, pady=(0, 60))
 
-        self.control_frame = ctk.CTkFrame(self.home_frame, fg_color="transparent")
-        self.control_frame.grid(row=2, column=0, padx=30, pady=(0, 30), sticky="ew")
+    def create_global_footer(self):
+        self.control_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.control_frame.grid(row=1, column=1, padx=30, pady=(0, 20), sticky="ew")
         self.control_frame.grid_columnconfigure(0, weight=1)
         
         self.lbl_status = ctk.CTkLabel(self.control_frame, text="準備就緒，等待開始...", font=("Microsoft JhengHei UI", 14), text_color="gray")
         self.lbl_status.grid(row=0, column=0, columnspan=3, pady=(0, 5))
         
         self.progress_bar = ctk.CTkProgressBar(self.control_frame, height=12, corner_radius=6)
-        self.progress_bar.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 20))
+        self.progress_bar.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 15))
         self.progress_bar.set(0)
         
-        self.btn_start = ctk.CTkButton(self.control_frame, text="🚀 開始執行批次改名", font=("Microsoft JhengHei UI", 16, "bold"), height=55, corner_radius=10, command=self.start_processing)
+        self.btn_start = ctk.CTkButton(self.control_frame, text="🚀 開始執行批次改名", font=("Microsoft JhengHei UI", 16, "bold"), height=50, corner_radius=10, command=self.start_processing)
         self.btn_start.grid(row=2, column=0, sticky="ew", padx=(0, 10))
         
-        self.btn_cancel = ctk.CTkButton(self.control_frame, text="⛔ 停止", font=("Microsoft JhengHei UI", 16, "bold"), fg_color="#D9534F", hover_color="#C9302C", height=55, width=120, corner_radius=10, command=self.cancel_processing, state="disabled")
+        self.btn_cancel = ctk.CTkButton(self.control_frame, text="⛔ 停止", font=("Microsoft JhengHei UI", 16, "bold"), fg_color="#D9534F", hover_color="#C9302C", height=50, width=120, corner_radius=10, command=self.cancel_processing, state="disabled")
         self.btn_cancel.grid(row=2, column=1, padx=(0, 10))
         
-        self.btn_open_folder = ctk.CTkButton(self.control_frame, text="📂 開啟輸出資料夾", font=("Microsoft JhengHei UI", 16, "bold"), fg_color="#5CB85C", hover_color="#4CAE4C", height=55, width=180, corner_radius=10, command=self.open_output_folder)
+        self.btn_open_folder = ctk.CTkButton(self.control_frame, text="📂 開啟輸出資料夾", font=("Microsoft JhengHei UI", 16, "bold"), fg_color="#5CB85C", hover_color="#4CAE4C", height=50, width=180, corner_radius=10, command=self.open_output_folder)
         self.btn_open_folder.grid(row=2, column=2)
 
     def create_logs_frame(self):
