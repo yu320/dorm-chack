@@ -268,11 +268,49 @@ class OCRDesktopApp(ctk.CTk):
         self.guide_frame.grid_columnconfigure(0, weight=1)
         lbl_title = ctk.CTkLabel(self.guide_frame, text="📖 使用說明", font=self.font_title)
         lbl_title.grid(row=0, column=0, padx=30, pady=(30, 20), sticky="w")
-        guide_box = ctk.CTkFrame(self.guide_frame, corner_radius=15)
+        
+        guide_box = ctk.CTkFrame(self.guide_frame, corner_radius=15, fg_color="#2B2B2B")
         guide_box.grid(row=1, column=0, padx=30, pady=(0, 30), sticky="ew")
-        guide_text = "操作說明已整合，這是一個與介面解耦的版本，擁有更強的擴充性與穩定性。"
-        lbl_content = ctk.CTkLabel(guide_box, text=guide_text, font=("Microsoft JhengHei UI", 15), justify="left")
-        lbl_content.grid(row=0, column=0, padx=30, pady=30, sticky="w")
+        guide_box.grid_columnconfigure(0, weight=1)
+
+        guide_content = """歡迎使用本工具！這是一個能幫您「全自動掃描圖片文字，並自動幫圖片改名」的超級小幫手。
+不用懂任何寫程式的知識，只要跟著以下三個簡單的步驟，就能輕鬆完成！
+
+🚀 步驟一：設定您的資料夾
+--------------------------------------------------
+1. 來源資料夾：您可以點擊「瀏覽」按鈕，或直接將要處理的資料夾「拖曳」到首頁的輸入框內！
+2. 輸出資料夾：拖曳資料夾後，系統會自動幫您設定好輸出路徑。您也可以自行修改。
+3. 處理模式：
+   - 複製 (保留原檔)：您的原始圖片會安全地保留著，系統只會把改名後的圖片「複製」到輸出資料夾。
+   - 移動 (節省空間)：原始圖片在改名後就會被移走。
+
+🎨 步驟二：進階設定 (可選)
+--------------------------------------------------
+如果您想自訂辨識的語言、支援的檔案格式(例如 PDF)、或是想過濾掉特定的檔名文字，
+都可以前往左側的「⚙️ 進階設定」進行勾選與調整。
+
+✨ 步驟三：一鍵開始自動改名！
+--------------------------------------------------
+回到「🏠 控制中心」，點擊最下方大大的「🚀 開始執行批次改名」按鈕。
+處理完畢後，您可以點擊「📂 開啟輸出資料夾」，裡面會自動幫您分類好：
+- 📁 已辨識：成功改名的圖片都會乖乖待在這裡！
+- 📁 未辨識：如果圖片太模糊或沒有文字，會被放到這裡。
+- 📄 辨識紀錄.txt：裡面詳細記錄了每一張圖片辨識出的文字。
+
+❓ 常見問題 (Q&A)
+--------------------------------------------------
+Q: 處理到一半我不小心關掉視窗了怎麼辦？
+A: 別擔心！程式有「記憶快取功能」。只要重新開啟軟體並按下開始，它會自動跳過已經處理過的圖片。
+   如果您想重新處理所有檔案，可以到進階設定點擊「🗑️ 清除快取」。
+
+Q: 為什麼有些圖片辨識出來的檔名怪怪的？
+A: 如果圖片上的文字太小、有陰影或太模糊，AI 有時候會辨識出亂碼。系統會盡量幫您過濾無效符號，但建議盡量使用清晰的圖片喔！
+"""
+        
+        lbl_content = ctk.CTkTextbox(guide_box, font=("Microsoft JhengHei UI", 15), fg_color="transparent", text_color="#E0E0E0", wrap="word", height=600)
+        lbl_content.grid(row=0, column=0, padx=30, pady=30, sticky="nsew")
+        lbl_content.insert("1.0", guide_content)
+        lbl_content.configure(state="disabled")
 
     def select_frame_by_name(self, name):
         self.btn_nav_home.configure(fg_color=("gray75", "gray25") if name == "home" else "transparent")
