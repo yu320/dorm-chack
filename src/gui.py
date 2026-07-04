@@ -489,6 +489,9 @@ class OCRDesktopApp(ctk.CTk):
         self.progress_bar.set(0)
         self.update_log("--------------------------------")
         
+        # 自動跳轉到處理日誌頁面，讓使用者可以即時預覽進度
+        self.select_frame_by_name("logs")
+        
         source = Path(self.source_var.get())
         target = Path(self.target_var.get())
         move = self.mode_var.get()
